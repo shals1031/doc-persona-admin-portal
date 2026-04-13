@@ -1,16 +1,54 @@
-# This is a sample Python script.
+from contextlib import asynccontextmanager
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import structlog
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from api import dashboard as api_dashboard
+from api import internal as api_internal
+from api import submission as api_submission
+from core.config import settings
+from core.database import engine
+from web import dashboard as web_dashboard
+
+logger = structlog.get_logger(__name__)
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    logger.info("startup", environment=settings.environment)
+    yield
+    await engine.dispose()
+    logger.info("shutdown")
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+app = FastAPI(
+    title="Doc Persona — Admin Portal",
+    version="1.0.0",
+    docs_url="/api/docs" if settings.environment == "development" else None,
+    redoc_url=None,
+    lifespan=lifespan,
+)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"] if settings.environment == "development" else [],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# API routers
+app.include_router(api_dashboard.router)
+app.include_router(api_submission.router)
+app.include_router(api_internal.router)
+
+# Web (Jinja2) router
+app.include_router(web_dashboard.router)
+
+# Static assets
+try:
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+except RuntimeError:
+    pass  # static dir optional during early dev

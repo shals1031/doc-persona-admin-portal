@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Submission Detail{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="/dashboard" class="btn btn-outline-secondary btn-sm">&larr; Back to Dashboard</a>
+</div>
+
+<div class="row g-4">
+  <!-- Submission Data -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">Submission Details</div>
+      <div class="card-body">
+        <table class="table table-sm table-borderless mb-0">
+          {% set sub = detail.submission %}
+          <tr><th class="text-muted w-40">Submission ID</th><td class="font-monospace small">{{ sub.submission_id }}</td></tr>
+          <tr><th class="text-muted">Doctor Name</th><td>{{ sub.doctor_name or '—' }}</td></tr>
+          <tr><th class="text-muted">Specialty</th><td>{{ sub.specialty or '—' }}</td></tr>
+          <tr><th class="text-muted">Tier</th><td>{{ sub.tier or '—' }}</td></tr>
+          <tr><th class="text-muted">Confidence</th><td>{{ sub.confidence or '—' }}</td></tr>
+          <tr><th class="text-muted">Region</th><td>{{ sub.region or '—' }}</td></tr>
+          <tr><th class="text-muted">MR Name</th><td>{{ sub.mr_name or '—' }}</td></tr>
+          <tr><th class="text-muted">MR ID</th><td class="font-monospace small">{{ sub.mr_id or '—' }}</td></tr>
+          <tr><th class="text-muted">Created At</th><td>{{ sub.created_at or '—' }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Profile -->
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold">AI Profile</div>
+      <div class="card-body">
+        {% if detail.ai_profile %}
+        {% set ai = detail.ai_profile %}
+        <table class="table table-sm table-borderless mb-0">
+          <tr><th class="text-muted w-40">Persona Tag</th>
+              <td><span class="badge bg-info text-dark">{{ ai.persona_tag or '—' }}</span></td></tr>
+          <tr><th class="text-muted">Persona Confidence</th>
+              <td>{% if ai.persona_confidence %}{{ "%.2f" % ai.persona_confidence }}{% else %}—{% endif %}</td></tr>
+          <tr><th class="text-muted">Doctor Name</th><td>{{ ai.doctor_name or '—' }}</td></tr>
+          <tr><th class="text-muted">Specialty</th><td>{{ ai.specialty or '—' }}</td></tr>
+          <tr><th class="text-muted">Tier</th><td>{{ ai.tier or '—' }}</td></tr>
+          <tr><th class="text-muted">Summary</th><td>{{ ai.summary or '—' }}</td></tr>
+          <tr><th class="text-muted">Last Updated</th><td>{{ ai.updated_at or '—' }}</td></tr>
+        </table>
+        {% else %}
+        <div class="text-muted text-center py-4">
+          AI profile not yet generated for this submission.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
