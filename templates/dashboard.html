@@ -42,12 +42,27 @@
 <div class="card mb-3">
   <div class="card-body">
     <form method="GET" action="/dashboard" class="row g-2 align-items-end">
-      <div class="col-md-3">
+      <div class="col-md-2">
+        <label class="form-label small">MR Name</label>
+        <input name="mr_name" class="form-control form-control-sm"
+               value="{{ filters.mr_name or '' }}" placeholder="All">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Manager Name</label>
+        <input name="mr_manager_name" class="form-control form-control-sm"
+               value="{{ filters.mr_manager_name or '' }}" placeholder="All">
+      </div>
+      <div class="col-md-2">
         <label class="form-label small">Geography</label>
         <input name="geography" class="form-control form-control-sm"
                value="{{ filters.geography or '' }}" placeholder="All">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
+        <label class="form-label small">Doctor Name</label>
+        <input name="doctor_name" class="form-control form-control-sm"
+               value="{{ filters.doctor_name or '' }}" placeholder="All">
+      </div>
+      <div class="col-md-2">
         <label class="form-label small">Status</label>
         <select name="form_status" class="form-select form-select-sm">
           <option value="">All</option>
@@ -61,9 +76,7 @@
         <a href="/dashboard" class="btn btn-outline-secondary btn-sm">Reset</a>
       </div>
       <div class="col-auto ms-auto">
-        <a href="/api/dashboard/export{% if filters.geography or filters.form_status %}?{% endif %}
-          {{ 'geography=' ~ filters.geography if filters.geography else '' }}
-          {{ ('&' if filters.geography else '') ~ 'form_status=' ~ filters.form_status if filters.form_status else '' }}"
+        <a href="/api/dashboard/export?{{ 'geography=' ~ (filters.geography or '') }}&{{ 'form_status=' ~ (filters.form_status or '') }}&{{ 'mr_name=' ~ (filters.mr_name or '') }}&{{ 'mr_manager_name=' ~ (filters.mr_manager_name or '') }}&{{ 'doctor_name=' ~ (filters.doctor_name or '') }}"
           class="btn btn-outline-success btn-sm">Export Excel</a>
       </div>
     </form>
@@ -104,7 +117,7 @@
           </td>
           <td class="text-muted small">{{ item.created_at.strftime('%Y-%m-%d') if item.created_at else '—' }}</td>
           <td>
-            <a href="/submission/{{ item.submission_id }}" class="btn btn-link btn-sm p-0">View</a>
+            <a href="/submission/{{ item.submission_id }}" class="btn btn-link btn-sm p-0" target="_blank">View</a>
           </td>
         </tr>
         {% else %}
@@ -123,7 +136,10 @@
     {% for p in range(1, total_pages + 1) %}
     <li class="page-item {% if p == listing.page %}active{% endif %}">
       <a class="page-link" href="?page={{ p }}
+        {%- if filters.mr_name %}&mr_name={{ filters.mr_name }}{% endif %}
+        {%- if filters.mr_manager_name %}&mr_manager_name={{ filters.mr_manager_name }}{% endif %}
         {%- if filters.geography %}&geography={{ filters.geography }}{% endif %}
+        {%- if filters.doctor_name %}&doctor_name={{ filters.doctor_name }}{% endif %}
         {%- if filters.form_status %}&form_status={{ filters.form_status }}{% endif %}">
         {{ p }}
       </a>

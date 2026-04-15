@@ -9,7 +9,7 @@ logger = get_task_logger(__name__)
 
 
 @celery_app.task(
-    name="app.workers.tasks.refresh_dashboard_aggregates",
+    name="workers.tasks.refresh_dashboard_aggregates",
     bind=True,
     max_retries=3,
     default_retry_delay=30,
@@ -39,7 +39,7 @@ def refresh_dashboard_aggregates(self):
 
 
 @celery_app.task(
-    name="app.workers.tasks.process_embedding_job",
+    name="workers.tasks.process_embedding_job",
     bind=True,
     max_retries=3,
     default_retry_delay=60,

@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from middleware.auth import require_auth
+from middleware.auth import require_admin, require_auth
 from middleware.tenant import resolve_tenant_id
 from schemas.auth import RequestContext
 from schemas.dashboard import DashboardFilters
@@ -20,15 +20,25 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(
     request: Request,
-    ctx: Annotated[RequestContext, Depends(require_auth)],
+    ctx: Annotated[RequestContext, Depends(require_admin)],
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
     geography: str | None = Query(None),
+    mr_name: str | None = Query(None),
+    mr_manager_name: str | None = Query(None),
+    doctor_name: str | None = Query(None),
     form_status: str | None = Query(None),
     page: int = Query(1, ge=1),
 ):
     svc = DashboardService(db)
-    filters = DashboardFilters(geography=geography, form_status=form_status, page=page)
+    filters = DashboardFilters(
+        geography=geography,
+        mr_name=mr_name,
+        mr_manager_name=mr_manager_name,
+        doctor_name=doctor_name,
+        form_status=form_status,
+        page=page
+    )
     summary = await svc.get_summary(tenant_id)
     listing = await svc.get_list(tenant_id, filters)
 
@@ -48,7 +58,7 @@ async def dashboard_page(
 async def submission_page(
     request: Request,
     submission_id: uuid.UUID,
-    ctx: Annotated[RequestContext, Depends(require_auth)],
+    ctx: Annotated[RequestContext, Depends(require_admin)],
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):

@@ -70,7 +70,7 @@ Extract JWT → Validate → Attach to request context
 4.2 Authorization (RBAC)
 Role	Access
 SYSTEM_ADMIN	All tenants
-CUSTOMER_ADMIN	Own tenant
+ADMIN	Own tenant
 4.3 Tenant Isolation (CRITICAL)
 Enforced in Service Layer
 NEVER rely on UI filtering

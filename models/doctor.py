@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Optional
 import uuid
 from datetime import datetime
 
@@ -17,14 +19,14 @@ class DoctorProfileFlatTable(Base):
     __table_args__ = {"schema": _schema}
 
     submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    mr_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    mr_name: Mapped[str | None] = mapped_column(Text)
-    region: Mapped[str | None] = mapped_column(Text)
-    doctor_name: Mapped[str | None] = mapped_column(Text)
-    specialty: Mapped[str | None] = mapped_column(Text)
-    tier: Mapped[str | None] = mapped_column(Text)
-    confidence: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime)
+    mr_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    mr_name: Mapped[str] = mapped_column(Text, nullable=True)
+    region: Mapped[str] = mapped_column(Text, nullable=True)
+    doctor_name: Mapped[str] = mapped_column(Text, nullable=True)
+    specialty: Mapped[str] = mapped_column(Text, nullable=True)
+    tier: Mapped[str] = mapped_column(Text, nullable=True)
+    confidence: Mapped[str] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
 
 class DoctorAiProfile(Base):
@@ -32,25 +34,25 @@ class DoctorAiProfile(Base):
     __table_args__ = {"schema": _schema}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    submission_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), unique=True)
+    submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=True)
 
-    mr_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    region: Mapped[str | None] = mapped_column(Text)
+    mr_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    region: Mapped[str] = mapped_column(Text, nullable=True)
 
-    doctor_name: Mapped[str | None] = mapped_column(Text)
-    specialty: Mapped[str | None] = mapped_column(Text)
+    doctor_name: Mapped[str] = mapped_column(Text, nullable=True)
+    specialty: Mapped[str] = mapped_column(Text, nullable=True)
 
-    tier: Mapped[str | None] = mapped_column(Text)
-    confidence: Mapped[str | None] = mapped_column(Text)
+    tier: Mapped[str] = mapped_column(Text, nullable=True)
+    confidence: Mapped[str] = mapped_column(Text, nullable=True)
 
-    summary: Mapped[str | None] = mapped_column(Text)
-    embedding: Mapped[list | None] = mapped_column(Vector(768))
+    summary: Mapped[str] = mapped_column(Text, nullable=True)
+    embedding: Mapped[list] = mapped_column(Vector(768), nullable=True)
 
-    persona_tag: Mapped[str | None] = mapped_column(Text)
-    persona_confidence: Mapped[float | None] = mapped_column(Float)
+    persona_tag: Mapped[str] = mapped_column(Text, nullable=True)
+    persona_confidence: Mapped[float] = mapped_column(Float, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
 
 class DoctorPersonaHistory(Base):
@@ -58,12 +60,12 @@ class DoctorPersonaHistory(Base):
     __table_args__ = {"schema": _schema}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    doctor_ai_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    doctor_ai_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
 
-    old_persona: Mapped[str | None] = mapped_column(Text)
-    new_persona: Mapped[str | None] = mapped_column(Text)
+    old_persona: Mapped[str] = mapped_column(Text, nullable=True)
+    new_persona: Mapped[str] = mapped_column(Text, nullable=True)
 
-    change_reason: Mapped[str | None] = mapped_column(Text)
-    model_version: Mapped[str | None] = mapped_column(Text)
+    change_reason: Mapped[str] = mapped_column(Text, nullable=True)
+    model_version: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

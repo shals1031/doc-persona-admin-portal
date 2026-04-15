@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Select Tenant - Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Select Tenant</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Please select a tenant to manage their data.</p>
+                
+                <div class="mb-3">
+                    <input type="text" id="tenantSearch" class="form-control" placeholder="Search tenant by name...">
+                </div>
+
+                <form method="POST" action="/select-tenant">
+                    <div class="list-group overflow-auto" style="max-height: 400px;" id="tenantList">
+                        {% for tenant in tenants %}
+                        <label class="list-group-item list-group-item-action d-flex align-items-center">
+                            <input class="form-check-input me-3" type="radio" name="tenant_id" value="{{ tenant.id }}" required>
+                            <span class="tenant-name">{{ tenant.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if not tenants %}
+                    <div class="alert alert-warning">
+                        No active tenants found.
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary w-100" {% if not tenants %}disabled{% endif %}>
+                            Continue to Dashboard
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('tenantSearch').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const items = document.querySelectorAll('#tenantList label');
+        
+        items.forEach(item => {
+            const name = item.querySelector('.tenant-name').textContent.toLowerCase();
+            if (name.includes(searchTerm)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

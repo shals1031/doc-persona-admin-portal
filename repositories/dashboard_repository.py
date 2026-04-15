@@ -28,9 +28,13 @@ class DashboardRepository:
         query = select(DashboardFact).where(DashboardFact.tenant_id == tenant_id)
 
         if filters.geography:
-            query = query.where(DashboardFact.geography == filters.geography)
+            query = query.where(DashboardFact.geography.ilike(f"%{filters.geography}%"))
+        if filters.mr_name:
+            query = query.where(DashboardFact.mr_name.ilike(f"%{filters.mr_name}%"))
         if filters.mr_manager_name:
-            query = query.where(DashboardFact.mr_manager_name == filters.mr_manager_name)
+            query = query.where(DashboardFact.mr_manager_name.ilike(f"%{filters.mr_manager_name}%"))
+        if filters.doctor_name:
+            query = query.where(DashboardFact.doctor_name.ilike(f"%{filters.doctor_name}%"))
         if filters.form_status:
             query = query.where(DashboardFact.form_status == filters.form_status)
         if filters.specialty:
@@ -57,9 +61,19 @@ class DashboardRepository:
         query = select(DashboardFact).where(DashboardFact.tenant_id == tenant_id)
 
         if filters.geography:
-            query = query.where(DashboardFact.geography == filters.geography)
+            query = query.where(DashboardFact.geography.ilike(f"%{filters.geography}%"))
+        if filters.mr_name:
+            query = query.where(DashboardFact.mr_name.ilike(f"%{filters.mr_name}%"))
+        if filters.mr_manager_name:
+            query = query.where(DashboardFact.mr_manager_name.ilike(f"%{filters.mr_manager_name}%"))
+        if filters.doctor_name:
+            query = query.where(DashboardFact.doctor_name.ilike(f"%{filters.doctor_name}%"))
         if filters.form_status:
             query = query.where(DashboardFact.form_status == filters.form_status)
+        if filters.specialty:
+            query = query.where(DashboardFact.specialty == filters.specialty)
+        if filters.tier:
+            query = query.where(DashboardFact.tier == filters.tier)
 
         result = await self.db.execute(query)
         return result.scalars().all()

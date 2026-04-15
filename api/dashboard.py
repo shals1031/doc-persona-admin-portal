@@ -30,7 +30,9 @@ async def get_list(
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
     geography: str | None = Query(None),
+    mr_name: str | None = Query(None),
     mr_manager_name: str | None = Query(None),
+    doctor_name: str | None = Query(None),
     form_status: str | None = Query(None),
     specialty: str | None = Query(None),
     tier: str | None = Query(None),
@@ -41,7 +43,9 @@ async def get_list(
 ):
     filters = DashboardFilters(
         geography=geography,
+        mr_name=mr_name,
         mr_manager_name=mr_manager_name,
+        doctor_name=doctor_name,
         form_status=form_status,
         specialty=specialty,
         tier=tier,
@@ -59,9 +63,18 @@ async def export_dashboard(
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
     geography: str | None = Query(None),
+    mr_name: str | None = Query(None),
+    mr_manager_name: str | None = Query(None),
+    doctor_name: str | None = Query(None),
     form_status: str | None = Query(None),
 ):
-    filters = DashboardFilters(geography=geography, form_status=form_status)
+    filters = DashboardFilters(
+        geography=geography,
+        mr_name=mr_name,
+        mr_manager_name=mr_manager_name,
+        doctor_name=doctor_name,
+        form_status=form_status
+    )
     data = await DashboardService(db).export_excel(tenant_id, filters)
     return Response(
         content=data,

@@ -13,10 +13,11 @@ _schema = settings.database_schema
 
 class Tenant(Base):
     __tablename__ = "tenants"
-    __table_args__ = {"schema": _schema}
+    __table_args__ = {"schema": "public"}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name: Mapped[str | None] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True, server_default='true')
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -34,12 +35,12 @@ class AiProcessingLog(Base):
     __table_args__ = {"schema": _schema}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    submission_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
 
-    status: Mapped[str | None] = mapped_column(Text)
-    error_message: Mapped[str | None] = mapped_column(Text)
-    processing_time_ms: Mapped[int | None] = mapped_column(Integer)
-    model_used: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str] = mapped_column(Text, nullable=True)
+    processing_time_ms: Mapped[int] = mapped_column(Integer, nullable=True)
+    model_used: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -49,10 +50,10 @@ class EmbeddingJob(Base):
     __table_args__ = {"schema": _schema}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    submission_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
 
-    status: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, onupdate=func.now(), nullable=True)

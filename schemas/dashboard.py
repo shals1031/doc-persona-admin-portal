@@ -36,7 +36,9 @@ class DashboardListResponse(BaseModel):
 
 class DashboardFilters(BaseModel):
     geography: str | None = None
+    mr_name: str | None = None
     mr_manager_name: str | None = None
+    doctor_name: str | None = None
     form_status: str | None = None
     specialty: str | None = None
     tier: str | None = None

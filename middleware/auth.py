@@ -1,13 +1,13 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 from core.config import settings
 from schemas.auth import RequestContext, TokenPayload, UserRole
 
-_bearer = HTTPBearer()
+_bearer = HTTPBearer(auto_error=False)
 
 
 def _decode_token(token: str) -> TokenPayload:
@@ -23,14 +23,41 @@ def _decode_token(token: str) -> TokenPayload:
 
 
 async def require_auth(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(_bearer)],
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> RequestContext:
-    payload = _decode_token(credentials.credentials)
+    token = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        # Fallback to cookie for web routes
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = _decode_token(token)
     return RequestContext(
         user_id=payload.sub,
         role=payload.role,
         tenant_id=payload.tenant_id,
+        full_name=payload.full_name,
     )
+
+
+async def require_admin(
+    ctx: Annotated[RequestContext, Depends(require_auth)],
+) -> RequestContext:
+    if ctx.role not in [UserRole.SYSTEM_ADMIN, UserRole.ADMIN]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this page."
+        )
+    return ctx
 
 
 async def require_system_admin(

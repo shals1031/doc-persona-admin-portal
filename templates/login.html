@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Login — Admin Portal{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-header bg-dark text-white text-center py-3">
+        <h4 class="mb-0">Admin Portal</h4>
+        <small class="text-white-50">Sign in to your account</small>
+      </div>
+      <div class="card-body p-4">
+        <div id="error-alert" class="alert alert-danger d-none" role="alert"></div>
+        <form id="login-form">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
+          </div>
+          <div class="mb-4">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
+          </div>
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary" id="login-btn">
+              <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+              Login
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorAlert = document.getElementById('error-alert');
+    const loginBtn = document.getElementById('login-btn');
+    const spinner = document.getElementById('btn-spinner');
+
+    errorAlert.classList.add('d-none');
+    loginBtn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            window.location.href = '/dashboard';
+        } else {
+            errorAlert.textContent = data.detail || 'Login failed. Please try again.';
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (error) {
+        errorAlert.textContent = 'An error occurred. Please try again.';
+        errorAlert.classList.remove('d-none');
+    } finally {
+        loginBtn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+});
+</script>
+{% endblock %}
