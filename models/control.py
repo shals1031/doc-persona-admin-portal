@@ -21,15 +21,6 @@ class Tenant(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
-class TenantMapping(Base):
-    __tablename__ = "tenant_mapping"
-    __table_args__ = {"schema": _schema}
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-
-
 class AiProcessingLog(Base):
     __tablename__ = "ai_processing_log"
     __table_args__ = {"schema": _schema}

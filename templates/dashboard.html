@@ -117,7 +117,7 @@
           </td>
           <td class="text-muted small">{{ item.created_at.strftime('%Y-%m-%d') if item.created_at else '—' }}</td>
           <td>
-            <a href="/submission/{{ item.submission_id }}" class="btn btn-link btn-sm p-0" target="_blank">View</a>
+            <a href="/submission/{{ item.submission_id }}" class="btn btn-link btn-sm p-0">View</a>
           </td>
         </tr>
         {% else %}

@@ -28,6 +28,6 @@ async def select_tenant(
     tenant_id: str = Form(...)
 ):
     response = RedirectResponse(url="/dashboard", status_code=303)
-    response.set_cookie(key="tenant_id", value=tenant_id, httponly=True, samesite="lax")
+    response.set_cookie(key="tenant_id", value=tenant_id, httponly=True, samesite="lax", path="/")
     return response
 

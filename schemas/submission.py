@@ -33,6 +33,13 @@ class AiProfileDetail(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class QuestionAnswer(BaseModel):
+    question: str
+    answer: str | None
+    confidence: str | None
+
+
 class SubmissionWithAiProfile(BaseModel):
     submission: SubmissionDetail
     ai_profile: AiProfileDetail | None
+    qa_data: list[QuestionAnswer] = []

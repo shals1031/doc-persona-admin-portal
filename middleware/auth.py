@@ -10,11 +10,16 @@ from schemas.auth import RequestContext, TokenPayload, UserRole
 _bearer = HTTPBearer(auto_error=False)
 
 
-def _decode_token(token: str) -> TokenPayload:
+def _decode_token(token: str, request: Request | None = None) -> TokenPayload:
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         return TokenPayload(**payload)
     except (JWTError, Exception):
+        if request and "text/html" in request.headers.get("accept", ""):
+            raise HTTPException(
+                status_code=status.HTTP_303_SEE_OTHER,
+                headers={"Location": "/login"}
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -34,13 +39,18 @@ async def require_auth(
         token = request.cookies.get("access_token")
 
     if not token:
+        if "text/html" in request.headers.get("accept", ""):
+            raise HTTPException(
+                status_code=status.HTTP_303_SEE_OTHER,
+                headers={"Location": "/login"}
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = _decode_token(token)
+    payload = _decode_token(token, request)
     return RequestContext(
         user_id=payload.sub,
         role=payload.role,

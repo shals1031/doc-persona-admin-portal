@@ -37,7 +37,8 @@ async def login(
         value=result["access_token"],
         httponly=True,
         max_age=1800, # 30 minutes
-        samesite="lax"
+        samesite="lax",
+        path="/"
     )
     
     return {

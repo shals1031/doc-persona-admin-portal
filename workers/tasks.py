@@ -27,6 +27,9 @@ def refresh_dashboard_aggregates(self):
         async def _run():
             async with AsyncSessionFactory() as session:
                 await session.execute(
+                    text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_fact")
+                )
+                await session.execute(
                     text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_aggregates")
                 )
                 await session.commit()

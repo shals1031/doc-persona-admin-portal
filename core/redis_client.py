@@ -16,23 +16,39 @@ def get_redis() -> aioredis.Redis:
 
 
 async def cache_get(key: str) -> Any | None:
-    client = get_redis()
-    value = await client.get(key)
-    if value is None:
+    try:
+        client = get_redis()
+        value = await client.get(key)
+        if value is None:
+            return None
+        return json.loads(value)
+    except Exception as e:
+        # Fallback to None if Redis is down or JSON is invalid
         return None
-    return json.loads(value)
 
 
 async def cache_set(key: str, value: Any, ttl_seconds: int = 60) -> None:
-    client = get_redis()
-    await client.setex(key, ttl_seconds, json.dumps(value, default=str))
+    try:
+        client = get_redis()
+        await client.setex(key, ttl_seconds, json.dumps(value, default=str))
+    except Exception:
+        # Ignore cache setting errors
+        pass
 
 
 async def cache_delete(key: str) -> None:
-    client = get_redis()
-    await client.delete(key)
+    try:
+        client = get_redis()
+        await client.delete(key)
+    except Exception:
+        # Ignore cache deletion errors
+        pass
 
 
 async def publish_event(channel: str, message: dict) -> None:
-    client = get_redis()
-    await client.publish(channel, json.dumps(message, default=str))
+    try:
+        client = get_redis()
+        await client.publish(channel, json.dumps(message, default=str))
+    except Exception:
+        # Ignore publishing errors
+        pass

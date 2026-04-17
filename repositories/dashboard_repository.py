@@ -15,10 +15,10 @@ class DashboardRepository:
     async def get_summary(self, tenant_id: uuid.UUID) -> dict[str, int]:
         result = await self.db.execute(
             select(
-                func.count().filter(DashboardFact.form_status == "Draft").label("draft"),
-                func.count().filter(DashboardFact.form_status == "Submitted").label("submitted"),
-                func.count().filter(DashboardFact.form_status == "Approved").label("approved"),
-                func.count().filter(DashboardFact.form_status == "Rejected").label("rejected"),
+                func.count().filter(func.lower(DashboardFact.form_status) == "draft").label("draft"),
+                func.count().filter(func.lower(DashboardFact.form_status) == "submitted").label("submitted"),
+                func.count().filter(func.lower(DashboardFact.form_status) == "approved").label("approved"),
+                func.count().filter(func.lower(DashboardFact.form_status) == "rejected").label("rejected"),
             ).where(DashboardFact.tenant_id == tenant_id)
         )
         row = result.one()
@@ -36,7 +36,7 @@ class DashboardRepository:
         if filters.doctor_name:
             query = query.where(DashboardFact.doctor_name.ilike(f"%{filters.doctor_name}%"))
         if filters.form_status:
-            query = query.where(DashboardFact.form_status == filters.form_status)
+            query = query.where(func.lower(DashboardFact.form_status) == filters.form_status.lower())
         if filters.specialty:
             query = query.where(DashboardFact.specialty == filters.specialty)
         if filters.tier:
@@ -69,7 +69,7 @@ class DashboardRepository:
         if filters.doctor_name:
             query = query.where(DashboardFact.doctor_name.ilike(f"%{filters.doctor_name}%"))
         if filters.form_status:
-            query = query.where(DashboardFact.form_status == filters.form_status)
+            query = query.where(func.lower(DashboardFact.form_status) == filters.form_status.lower())
         if filters.specialty:
             query = query.where(DashboardFact.specialty == filters.specialty)
         if filters.tier:
@@ -79,6 +79,9 @@ class DashboardRepository:
         return result.scalars().all()
 
     async def refresh_aggregates(self) -> None:
+        await self.db.execute(
+            text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_fact")
+        )
         await self.db.execute(
             text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_aggregates")
         )

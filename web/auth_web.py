@@ -17,6 +17,6 @@ async def login_page(request: Request):
 @router.get("/logout")
 async def logout(response: Response):
     response = RedirectResponse(url="/login")
-    response.delete_cookie("access_token")
-    response.delete_cookie("tenant_id")
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("tenant_id", path="/")
     return response
