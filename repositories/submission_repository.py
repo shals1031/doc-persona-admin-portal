@@ -4,6 +4,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.doctor import DoctorAiProfile, DoctorProfileFlatTable
+from models.dashboard import DashboardFact
 
 
 class SubmissionRepository:
@@ -11,11 +12,13 @@ class SubmissionRepository:
         self.db = db
 
     async def get_by_id(self, submission_id: uuid.UUID, tenant_id: uuid.UUID) -> DoctorProfileFlatTable | None:
-        # Verify tenant ownership via DoctorProfileFlatTable.tenant_id
+        # Verify tenant ownership via DashboardFact.tenant_id (since DoctorProfileFlatTable may lack it in some envs)
         result = await self.db.execute(
-            select(DoctorProfileFlatTable).where(
+            select(DoctorProfileFlatTable)
+            .join(DashboardFact, DashboardFact.submission_id == DoctorProfileFlatTable.submission_id)
+            .where(
                 DoctorProfileFlatTable.submission_id == submission_id,
-                DoctorProfileFlatTable.tenant_id == tenant_id
+                DashboardFact.tenant_id == tenant_id
             )
         )
         return result.scalar_one_or_none()

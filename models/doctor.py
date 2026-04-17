@@ -19,7 +19,7 @@ class DoctorProfileFlatTable(Base):
     __table_args__ = {"schema": _schema}
 
     submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # tenant_id is verified via join with dashboard_fact to support environments where it might be missing from this table
     mr_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
     mr_name: Mapped[str] = mapped_column(Text, nullable=True)
     region: Mapped[str] = mapped_column(Text, nullable=True)
