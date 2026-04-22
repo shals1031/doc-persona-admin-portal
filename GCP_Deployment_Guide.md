@@ -154,7 +154,7 @@ gcloud run deploy admin-worker \
     --add-cloudsql-instances=$INSTANCE_CONNECTION_NAME \
     --no-cpu-throttling \
     --min-instances=1 \
-    --command="celery,-A,workers.celery_app,worker,--loglevel=info,-Q,default,ai-processing,analytics-refresh"
+    --command="python,workers/health_check_wrapper.py,celery,-A,workers.celery_app,worker,--loglevel=info,-Q,default,ai-processing,analytics-refresh"
 ```
 
 ### 6.3 Celery Beat (Scheduler)
@@ -168,7 +168,7 @@ gcloud run deploy admin-beat \
     --no-cpu-throttling \
     --min-instances=1 \
     --max-instances=1 \
-    --command="celery,-A,workers.celery_app,beat,--loglevel=info"
+    --command="python,workers/health_check_wrapper.py,celery,-A,workers.celery_app,beat,--loglevel=info"
 ```
 
 ---

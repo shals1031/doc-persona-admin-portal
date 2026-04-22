@@ -58,6 +58,7 @@ services:
       JWT_SECRET: admin-portal-jwt-secret-change-in-production
       JWT_ALGORITHM: HS256
       ENVIRONMENT: development
+      PORT: 8080
     depends_on:
       redis:
         condition: service_healthy
@@ -65,7 +66,7 @@ services:
       - .:/app
     networks:
       - doc_persona_network
-    command: celery -A workers.celery_app worker --loglevel=info -Q default,ai-processing,analytics-refresh
+    command: python workers/health_check_wrapper.py celery -A workers.celery_app worker --loglevel=info -Q default,ai-processing,analytics-refresh
 
   celery_beat:
     build:
@@ -83,6 +84,7 @@ services:
       JWT_SECRET: admin-portal-jwt-secret-change-in-production
       JWT_ALGORITHM: HS256
       ENVIRONMENT: development
+      PORT: 8081
     depends_on:
       redis:
         condition: service_healthy
@@ -90,7 +92,7 @@ services:
       - .:/app
     networks:
       - doc_persona_network
-    command: celery -A workers.celery_app beat --loglevel=info
+    command: python workers/health_check_wrapper.py celery -A workers.celery_app beat --loglevel=info
 
 volumes:
   postgres_data:

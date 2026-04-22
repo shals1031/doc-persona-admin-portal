@@ -30,6 +30,9 @@ def refresh_dashboard_aggregates(self):
                     text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_fact")
                 )
                 await session.execute(
+                    text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.doctor_profile_flat_table")
+                )
+                await session.execute(
                     text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_aggregates")
                 )
                 await session.commit()

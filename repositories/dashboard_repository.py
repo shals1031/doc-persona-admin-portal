@@ -83,6 +83,9 @@ class DashboardRepository:
             text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_fact")
         )
         await self.db.execute(
+            text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.doctor_profile_flat_table")
+        )
+        await self.db.execute(
             text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_aggregates")
         )
         await self.db.commit()
