@@ -37,9 +37,17 @@ class QuestionAnswer(BaseModel):
     question: str
     answer: str | None
     confidence: str | None
+    is_answered: bool = True
+
+
+class SectionQuestions(BaseModel):
+    title: str
+    description: str | None = None
+    questions: list[QuestionAnswer] = []
 
 
 class SubmissionWithAiProfile(BaseModel):
     submission: SubmissionDetail
     ai_profile: AiProfileDetail | None
     qa_data: list[QuestionAnswer] = []
+    sections: list[SectionQuestions] = []

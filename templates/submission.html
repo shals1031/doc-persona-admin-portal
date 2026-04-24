@@ -62,35 +62,55 @@
     <div class="card">
       <div class="card-header fw-semibold">Detailed Submission Form Data</div>
       <div class="card-body p-0">
-        <table class="table table-hover table-sm mb-0">
-          <thead class="table-light">
-            <tr>
-              <th style="width: 40%">Question</th>
-              <th style="width: 40%">Answer</th>
-              <th style="width: 20%">Confidence Level</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for qa in detail.qa_data %}
-            <tr>
-              <td>{{ qa.question }}</td>
-              <td>{{ qa.answer or '—' }}</td>
-              <td>
-                {% if qa.confidence %}
-                {% set badge_map = {'High': 'success', 'Medium': 'warning', 'Low': 'danger'} %}
-                <span class="badge bg-{{ badge_map.get(qa.confidence, 'secondary') }}">
-                  {{ qa.confidence }}
-                </span>
-                {% else %}
-                <span class="text-muted small">N/A</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% else %}
-            <tr><td colspan="3" class="text-center text-muted py-4">No detailed question data available.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        {% if detail.sections %}
+          {% for section in detail.sections %}
+          <div class="p-3 bg-light border-bottom">
+            <h6 class="mb-1 fw-bold text-primary">{{ section.title }}</h6>
+            {% if section.description %}
+            <p class="text-muted small mb-0">{{ section.description }}</p>
+            {% endif %}
+          </div>
+          <table class="table table-hover table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 40%" class="ps-3">Question</th>
+                <th style="width: 40%">Answer</th>
+                <th style="width: 20%">Confidence Level</th>
+              </tr>
+            </thead>
+            <tbody class="border-bottom">
+              {% for qa in section.questions %}
+              <tr {% if not qa.is_answered %}class="table-warning opacity-75"{% endif %}>
+                <td class="ps-3">{{ qa.question }}</td>
+                <td>
+                  {% if qa.is_answered %}
+                    {{ qa.answer or '—' }}
+                  {% else %}
+                    <span class="text-muted small italic">Not answered</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if qa.confidence %}
+                  {% set badge_map = {'High': 'success', 'Medium': 'warning', 'Low': 'danger'} %}
+                  <span class="badge bg-{{ badge_map.get(qa.confidence, 'secondary') }}">
+                    {{ qa.confidence }}
+                  </span>
+                  {% else %}
+                  <span class="text-muted small">N/A</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% endfor %}
+        {% else %}
+          <table class="table table-hover table-sm mb-0">
+            <tbody>
+              <tr><td class="text-center text-muted py-4">No detailed question data available.</td></tr>
+            </tbody>
+          </table>
+        {% endif %}
       </div>
     </div>
   </div>
