@@ -69,3 +69,14 @@ async def submission_page(
         "submission.html",
         {"request": request, "ctx": ctx, "detail": detail},
     )
+
+
+@router.get("/doctor-mr-mapping")
+async def doctor_mr_mapping_page(
+    request: Request,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+):
+    return templates.TemplateResponse(
+        "doctor_mr_mapping.html",
+        {"request": request, "ctx": ctx},
+    )

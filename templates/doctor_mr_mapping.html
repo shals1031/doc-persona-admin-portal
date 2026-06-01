@@ -1,0 +1,627 @@
+{% extends "base.html" %} {% block title %}Doctor-MR Mapping — Admin Portal{%
+endblock %} {% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2>Doctor–MR mapping</h2>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2 position-relative">
+        <label class="form-label small text-muted">Doctor Name</label>
+        <input
+          type="text"
+          id="filter-doctor"
+          class="form-control form-control-sm"
+          placeholder="All"
+          autocomplete="off"
+          onkeypress="if (event.key === 'Enter') applyFilters();"
+        />
+        <ul id="doctor-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      </div>
+      <div class="col-md-2 position-relative">
+        <label class="form-label small text-muted">MR Name</label>
+        <input
+          type="text"
+          id="filter-mr"
+          class="form-control form-control-sm"
+          placeholder="All"
+          autocomplete="off"
+          onkeypress="if (event.key === 'Enter') applyFilters();"
+        />
+        <ul id="mr-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      </div>
+      <div class="col-md-2 position-relative">
+        <label class="form-label small text-muted">Manager Name</label>
+        <input
+          type="text"
+          id="filter-manager"
+          class="form-control form-control-sm"
+          placeholder="All"
+          autocomplete="off"
+          onkeypress="if (event.key === 'Enter') applyFilters();"
+        />
+        <ul id="manager-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      </div>
+      <div class="col-md-2 position-relative">
+        <label class="form-label small text-muted">Location</label>
+        <input
+          type="text"
+          id="filter-location"
+          class="form-control form-control-sm"
+          placeholder="All"
+          autocomplete="off"
+          onkeypress="if (event.key === 'Enter') applyFilters();"
+        />
+        <ul id="location-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          onclick="applyFilters()"
+        >
+          Filter
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          onclick="resetFilters()"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Table -->
+<div class="card position-relative">
+  <div
+    id="table-loader"
+    class="position-absolute top-0 start-0 w-100 h-100 bg-white opacity-75 d-flex justify-content-center align-items-center"
+    style="z-index: 10; display: none !important"
+  >
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover table-sm mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Doctor</th>
+          <th>MR name</th>
+          <th>Manager</th>
+          <th>Geography</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="mapping-table-body">
+        <!-- Rendered via JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Pagination -->
+<nav
+  class="mt-4 d-flex justify-content-end"
+  id="pagination-container"
+  style="display: none"
+>
+  <ul class="pagination pagination-sm mb-0 shadow-sm" id="pagination-list">
+    <!-- Rendered via JS -->
+  </ul>
+</nav>
+
+<!-- Remap Drawer -->
+<div
+  class="offcanvas offcanvas-end shadow"
+  tabindex="-1"
+  id="remapDrawer"
+  aria-labelledby="remapDrawerLabel"
+>
+  <div class="offcanvas-header border-bottom">
+    <h5 id="remapDrawerLabel" class="offcanvas-title mb-0">
+      <span id="drawer-doctor-name"></span><br />
+      <small
+        id="drawer-doctor-speciality"
+        class="text-muted fw-normal fs-6"
+      ></small>
+    </h5>
+    <button
+      type="button"
+      class="btn-close text-reset"
+      onclick="closeDrawer()"
+      aria-label="Close"
+    ></button>
+  </div>
+  <div class="offcanvas-body">
+    <div
+      id="drawer-error"
+      class="alert alert-danger d-none py-2 px-3 small"
+    ></div>
+
+    <div class="mb-4">
+      <h6 class="text-uppercase text-muted small fw-bold mb-2">Current Info</h6>
+      <p class="mb-1 small">
+        <strong>MR:</strong> <span id="drawer-current-mr"></span>
+      </p>
+      <p class="mb-1 small">
+        <strong>Manager:</strong> <span id="drawer-current-manager"></span>
+      </p>
+      <p class="mb-1 small">
+        <strong>Location:</strong> <span id="drawer-current-location"></span>
+      </p>
+    </div>
+
+    <div class="mb-4">
+      <h6 class="text-uppercase text-muted small fw-bold mb-2">Reassign to</h6>
+      <div class="position-relative">
+        <input type="hidden" id="remap-mr-id" />
+        <input
+          type="text"
+          id="remap-mr-input"
+          class="form-control form-control-sm mb-3"
+          placeholder="Search for an MR..."
+          autocomplete="off"
+        />
+        <ul id="remap-mr-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      </div>
+      <button class="btn btn-primary btn-sm w-100" onclick="submitRemap()">
+        Confirm ReMap
+      </button>
+    </div>
+  </div>
+</div>
+<div
+  class="offcanvas-backdrop fade show"
+  id="remap-backdrop"
+  style="display: none"
+  onclick="closeDrawer()"
+></div>
+
+<!-- Toast container -->
+<div
+  class="position-fixed bottom-0 start-50 translate-middle-x p-3"
+  style="z-index: 1055"
+>
+  <div
+    id="toast-message"
+    class="toast align-items-center text-white bg-success border-0"
+    role="alert"
+    aria-live="assertive"
+    aria-atomic="true"
+    data-bs-delay="3000"
+  >
+    <div class="d-flex">
+      <div class="toast-body" id="toast-body-text"></div>
+      <button
+        type="button"
+        class="btn-close btn-close-white me-2 m-auto"
+        data-bs-dismiss="toast"
+        aria-label="Close"
+      ></button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = "/api/internal";
+  let currentPage = 1;
+  let activeFilters = {
+    doctor_name: "",
+    mr_name: "",
+    manager_name: "",
+    geolocation: "",
+  };
+  let activeDoctorId = null;
+  let activeDrawerMrName = null;
+
+  function applyFilters() {
+    activeFilters.doctor_name = document.getElementById("filter-doctor").value;
+    activeFilters.mr_name = document.getElementById("filter-mr").value;
+    activeFilters.manager_name =
+      document.getElementById("filter-manager").value;
+    activeFilters.geolocation =
+      document.getElementById("filter-location").value;
+    currentPage = 1;
+    fetchMappings();
+  }
+
+  function resetFilters() {
+    document.getElementById("filter-doctor").value = "";
+    document.getElementById("filter-mr").value = "";
+    document.getElementById("filter-manager").value = "";
+    document.getElementById("filter-location").value = "";
+    activeFilters = {
+      doctor_name: "",
+      mr_name: "",
+      manager_name: "",
+      geolocation: "",
+    };
+    currentPage = 1;
+    fetchMappings();
+  }
+
+  // Show/Hide loader
+  function showTableLoader(show) {
+    const loader = document.getElementById("table-loader");
+    if (show) {
+      loader.style.setProperty("display", "flex", "important");
+    } else {
+      loader.style.setProperty("display", "none", "important");
+    }
+  }
+
+  // Fetch and render table
+  async function fetchMappings() {
+    showTableLoader(true);
+    const params = new URLSearchParams({
+      ...Object.fromEntries(
+        Object.entries(activeFilters).filter(([_, v]) => v),
+      ),
+      page: currentPage,
+      page_size: 15,
+    });
+
+    // Sync URL with filters
+    const queryStr = params.toString();
+    const newUrl = `${window.location.pathname}?${queryStr}`;
+    window.history.replaceState({}, "", newUrl);
+
+    try {
+      const res = await fetch(`${API_BASE}/mappings?${params}`);
+      const data = await res.json();
+      renderTable(data);
+      renderPagination(data);
+    } catch (e) {
+      console.error("Failed to fetch mappings", e);
+    }
+    showTableLoader(false);
+  }
+
+  // Render Table
+  function renderTable(data) {
+    const tbody = document.getElementById("mapping-table-body");
+    tbody.innerHTML = "";
+
+    if (data.items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No records found</td></tr>`;
+      return;
+    }
+
+    data.items.forEach((item) => {
+      const tr = document.createElement("tr");
+      tr.style.cursor = "pointer";
+      tr.onclick = (e) => {
+        if (!e.target.closest("button")) {
+          openDrawer(item);
+        }
+      };
+
+      const doctorSpec = item.doctor_speciality
+        ? `<br><small class="text-muted">${item.doctor_speciality}</small>`
+        : "";
+      const mrBadge = item.mr_name
+        ? item.mr_name
+        : `<span class="badge bg-warning text-dark">Unassigned</span>`;
+      const managerText = item.manager_name || "—";
+      const locText = item.geolocation || "—";
+
+      tr.innerHTML = `
+            <td>${item.doctor_name}${doctorSpec}</td>
+            <td>${mrBadge}</td>
+            <td>${managerText}</td>
+            <td>${locText}</td>
+            <td><button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); openDrawer(${JSON.stringify(item).replace(/"/g, "&quot;")})">ReMap</button></td>
+        `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Render Pagination
+  function renderPagination(data) {
+    const container = document.getElementById("pagination-container");
+    const ul = document.getElementById("pagination-list");
+    ul.innerHTML = "";
+
+    if (data.total_pages <= 1) {
+      container.style.display = "none";
+      return;
+    }
+
+    container.style.display = "flex";
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = startPage + maxVisiblePages - 1;
+
+    if (endPage > data.total_pages) {
+      endPage = data.total_pages;
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    const addPageItem = (text, pageNum, disabled = false, active = false) => {
+      const li = document.createElement("li");
+      li.className = `page-item ${active ? "active" : ""} ${disabled ? "disabled" : ""}`;
+      li.innerHTML = `<a class="page-link" href="#" onclick="event.preventDefault(); if(!${disabled}) { currentPage = ${pageNum}; fetchMappings(); }">${text}</a>`;
+      ul.appendChild(li);
+    };
+
+    addPageItem("&laquo;", 1, currentPage === 1);
+    addPageItem("&lsaquo;", currentPage - 1, currentPage === 1);
+
+    for (let p = startPage; p <= endPage; p++) {
+      addPageItem(p, p, false, p === currentPage);
+    }
+
+    addPageItem("&rsaquo;", currentPage + 1, currentPage === data.total_pages);
+    addPageItem("&raquo;", data.total_pages, currentPage === data.total_pages);
+  }
+
+  let allMRs = [];
+  // Load MR Options for dropdown
+  async function loadMROptions() {
+    try {
+      const res = await fetch(`${API_BASE}/mrs`);
+      allMRs = await res.json();
+      setupMRAutocomplete();
+    } catch (e) {
+      console.error("Failed to load MRs", e);
+    }
+  }
+
+  function setupMRAutocomplete() {
+    const input = document.getElementById("remap-mr-input");
+    const dropdown = document.getElementById("remap-mr-autocomplete");
+    const hiddenId = document.getElementById("remap-mr-id");
+
+    const renderDropdown = (query) => {
+      dropdown.innerHTML = "";
+      
+      const lowerQuery = (query || "").toLowerCase();
+      let filtered = allMRs;
+      if (lowerQuery) {
+          filtered = allMRs.filter(mr => mr.mr_name.toLowerCase().includes(lowerQuery));
+      }
+
+      // Exclude the currently assigned MR from the suggestions
+      if (activeDrawerMrName) {
+          filtered = filtered.filter(mr => mr.mr_name !== activeDrawerMrName);
+      }
+
+      filtered = filtered.slice(0, 50); // limit to 50 for performance
+      
+      if (filtered.length === 0) {
+        dropdown.classList.remove("show");
+        return;
+      }
+
+      filtered.forEach(mr => {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.className = "dropdown-item text-truncate";
+        a.href = "#";
+        a.title = mr.mr_name;
+        a.textContent = mr.mr_name;
+        a.onmousedown = (e) => {
+          e.preventDefault(); // prevent blur
+          input.value = mr.mr_name;
+          hiddenId.value = mr.mr_user_id;
+          dropdown.classList.remove("show");
+        };
+        li.appendChild(a);
+        dropdown.appendChild(li);
+      });
+      dropdown.classList.add("show");
+    };
+
+    input.addEventListener("input", (e) => {
+      hiddenId.value = ""; // clear hidden ID when typing
+      renderDropdown(e.target.value);
+    });
+
+    input.addEventListener("focus", (e) => {
+      renderDropdown(e.target.value);
+    });
+
+    input.addEventListener("blur", () => {
+      dropdown.classList.remove("show");
+      if (!hiddenId.value) {
+          input.value = ""; // clear if invalid selection
+      }
+    });
+  }
+
+  let filterData = { doctors: [], mrs: [], managers: [], locations: [] };
+
+  // Load Autocomplete Options for Filters
+  async function loadFilterOptions() {
+    try {
+      const res = await fetch(`${API_BASE}/mappings/filter-options`);
+      const options = await res.json();
+      filterData = options;
+      
+      setupAutocomplete("filter-doctor", "doctor-autocomplete", filterData.doctors);
+      setupAutocomplete("filter-mr", "mr-autocomplete", filterData.mrs);
+      setupAutocomplete("filter-manager", "manager-autocomplete", filterData.managers);
+      setupAutocomplete("filter-location", "location-autocomplete", filterData.locations);
+    } catch (e) {
+      console.error("Failed to load filter options", e);
+    }
+  }
+
+  function setupAutocomplete(inputId, dropdownId, dataList) {
+    const input = document.getElementById(inputId);
+    const dropdown = document.getElementById(dropdownId);
+
+    const renderDropdown = (query) => {
+      dropdown.innerHTML = "";
+      // Only show suggestions when there is at least 1 character
+      if (!query || query.trim().length === 0) {
+        dropdown.classList.remove("show");
+        return;
+      }
+      
+      const lowerQuery = query.toLowerCase();
+      // Filter list and limit to 50 for performance
+      const filtered = dataList.filter(item => item.toLowerCase().includes(lowerQuery)).slice(0, 50);
+      
+      if (filtered.length === 0) {
+        dropdown.classList.remove("show");
+        return;
+      }
+
+      filtered.forEach(item => {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.className = "dropdown-item text-truncate";
+        a.href = "#";
+        a.title = item;
+        a.textContent = item;
+        a.onmousedown = (e) => {
+          e.preventDefault(); // prevent blur
+          input.value = item;
+          dropdown.classList.remove("show");
+          applyFilters(); // Automatically trigger filter when option is selected
+        };
+        li.appendChild(a);
+        dropdown.appendChild(li);
+      });
+      dropdown.classList.add("show");
+    };
+
+    input.addEventListener("input", (e) => {
+      renderDropdown(e.target.value);
+    });
+
+    input.addEventListener("focus", (e) => {
+      if (e.target.value) renderDropdown(e.target.value);
+    });
+
+    input.addEventListener("blur", () => {
+      dropdown.classList.remove("show");
+    });
+  }
+
+  // Drawer logic
+  function openDrawer(item) {
+    activeDoctorId = item.doctor_id;
+    activeDrawerMrName = item.mr_name || null;
+    document.getElementById("drawer-doctor-name").textContent =
+      item.doctor_name;
+    document.getElementById("drawer-doctor-speciality").textContent =
+      item.doctor_speciality || "";
+    document.getElementById("drawer-current-mr").textContent =
+      item.mr_name || "Unassigned";
+    document.getElementById("drawer-current-manager").textContent =
+      item.manager_name || "—";
+    document.getElementById("drawer-current-location").textContent =
+      item.geolocation || "—";
+
+    document.getElementById("remap-mr-input").value = "";
+    document.getElementById("remap-mr-id").value = "";
+    document.getElementById("drawer-error").classList.add("d-none");
+
+    document.getElementById("remapDrawer").classList.add("show");
+    document.getElementById("remap-backdrop").style.display = "block";
+  }
+
+  function closeDrawer() {
+    document.getElementById("remapDrawer").classList.remove("show");
+    document.getElementById("remap-backdrop").style.display = "none";
+  }
+
+  function showDrawerError(msg) {
+    const err = document.getElementById("drawer-error");
+    err.textContent = msg;
+    err.classList.remove("d-none");
+  }
+
+  // Toast
+  function showToast(msg) {
+    const toastEl = document.getElementById("toast-message");
+    document.getElementById("toast-body-text").textContent = msg;
+
+    // Quick vanilla bs5 toast workaround without bringing in the JS library just for show
+    toastEl.classList.add("show");
+    setTimeout(() => {
+      toastEl.classList.remove("show");
+    }, 3000);
+  }
+
+  // Remap submit
+  async function submitRemap() {
+    const newMrId = document.getElementById("remap-mr-id").value;
+    const newMrName = document.getElementById("remap-mr-input").value;
+    if (!newMrId) {
+      showDrawerError("Please select an MR from the dropdown.");
+      return;
+    }
+
+    const payload = {
+      new_mr_user_id: newMrId,
+      new_mr_name: newMrName,
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/mappings/${activeDoctorId}/remap`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        closeDrawer();
+        showToast(data.message);
+        fetchMappings();
+      } else {
+        showDrawerError("ReMap failed. Please try again.");
+      }
+    } catch (e) {
+      showDrawerError("An unexpected error occurred.");
+    }
+  }
+
+  // Initialise
+  document.addEventListener("DOMContentLoaded", () => {
+    // Parse URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("doctor_name"))
+      activeFilters.doctor_name = urlParams.get("doctor_name");
+    if (urlParams.has("mr_name"))
+      activeFilters.mr_name = urlParams.get("mr_name");
+    if (urlParams.has("manager_name"))
+      activeFilters.manager_name = urlParams.get("manager_name");
+    if (urlParams.has("geolocation"))
+      activeFilters.geolocation = urlParams.get("geolocation");
+    if (urlParams.has("page"))
+      currentPage = parseInt(urlParams.get("page")) || 1;
+
+    // Set input values
+    document.getElementById("filter-doctor").value = activeFilters.doctor_name;
+    document.getElementById("filter-mr").value = activeFilters.mr_name;
+    document.getElementById("filter-manager").value =
+      activeFilters.manager_name;
+    document.getElementById("filter-location").value =
+      activeFilters.geolocation;
+
+    fetchMappings();
+    loadMROptions();
+    loadFilterOptions();
+  });
+</script>
+
+<style>
+  /* Drawer styles since Bootstrap offcanvas classes might need a bit of nudging */
+  .offcanvas {
+    transition: transform 0.3s ease-in-out;
+  }
+</style>
+{% endblock %}

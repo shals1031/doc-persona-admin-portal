@@ -86,37 +86,37 @@
 <!-- Data Table -->
 <div class="card">
   <div class="card-body p-0">
-    <table class="table table-hover table-sm mb-0">
+    <table class="table table-hover align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th>Doctor</th>
-          <th>Specialty</th>
-          <th>Tier</th>
-          <th>MR Name</th>
-          <th>Manager</th>
-          <th>Geography</th>
-          <th>Status</th>
-          <th>Created</th>
-          <th></th>
+          <th class="px-3 py-1">Doctor</th>
+          <th class="px-3 py-1">Specialty</th>
+          <th class="px-3 py-1">Tier</th>
+          <th class="px-3 py-1">MR Name</th>
+          <th class="px-3 py-1">Manager</th>
+          <th class="px-3 py-1">Geography</th>
+          <th class="px-3 py-1">Status</th>
+          <th class="px-3 py-1">Created</th>
+          <th class="px-3 py-1"></th>
         </tr>
       </thead>
       <tbody>
         {% for item in listing.items %}
         <tr>
-          <td>{{ item.doctor_name or '—' }}</td>
-          <td>{{ item.specialty or '—' }}</td>
-          <td>{{ item.tier or '—' }}</td>
-          <td>{{ item.mr_name or '—' }}</td>
-          <td>{{ item.mr_manager_name or '—' }}</td>
-          <td>{{ item.geography or '—' }}</td>
-          <td>
+          <td class="px-3 py-1">{{ item.doctor_name or '—' }}</td>
+          <td class="px-3 py-1">{{ item.specialty or '—' }}</td>
+          <td class="px-3 py-1">{{ item.tier or '—' }}</td>
+          <td class="px-3 py-1">{{ item.mr_name or '—' }}</td>
+          <td class="px-3 py-1">{{ item.mr_manager_name or '—' }}</td>
+          <td class="px-3 py-1">{{ item.geography or '—' }}</td>
+          <td class="px-3 py-1">
             {% set badge = {'Draft': 'secondary', 'Submitted': 'primary', 'Approved': 'success', 'Rejected': 'danger'} %}
             <span class="badge bg-{{ badge.get(item.form_status, 'secondary') }}">
               {{ item.form_status or '—' }}
             </span>
           </td>
-          <td class="text-muted small">{{ item.created_at.strftime('%Y-%m-%d') if item.created_at else '—' }}</td>
-          <td>
+          <td class="px-3 py-1 text-muted small text-nowrap">{{ item.created_at.strftime('%Y-%m-%d') if item.created_at else '—' }}</td>
+          <td class="px-3 py-1">
             <a href="/submission/{{ item.submission_id }}" class="btn btn-link btn-sm p-0">View</a>
           </td>
         </tr>
