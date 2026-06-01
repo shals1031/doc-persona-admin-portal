@@ -1,9 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text, delete
+from sqlalchemy import select, func, text, delete, update
 from sqlalchemy.orm import aliased
 import uuid
 from models.auth import Doctor, MRDoctorMapping, User
 from schemas.mapping import MappingFilterParams
+from models.submission import Submission
 
 async def get_mappings_filtered(
     db: AsyncSession,
@@ -148,6 +149,14 @@ async def update_mapping_mr(
         tenant_id=t_id
     )
     db.add(new_mapping)
+
+    # Transfer ownership of past submissions to the new MR
+    await db.execute(
+        update(Submission)
+        .where(Submission.doctor_id == doc_id)
+        .where(Submission.tenant_id == t_id)
+        .values(submitted_by=mr_uuid)
+    )
 
     await db.commit()
     return doctor_name, new_mr_name, new_manager_name
