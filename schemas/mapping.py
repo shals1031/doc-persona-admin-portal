@@ -9,7 +9,7 @@ class MappingFilterParams(BaseModel):
     manager_name: Optional[str] = None     # free-text search
     geolocation: Optional[str] = None      # free-text search
     page: int = 1
-    page_size: int = 16
+    page_size: int = 15
 
 
 class DoctorMRMappingRead(BaseModel):

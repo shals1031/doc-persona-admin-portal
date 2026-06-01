@@ -51,7 +51,7 @@ async def remap_doctor(
         doctor_name=doc_name,
         old_mr_name=None,  # We don't fetch old mr name in the optimized update
         new_mr_name=new_mr_name,
-        message=f"{doc_name} successfully remapped to {new_mr_name}",
+        message=f"{doc_name} successfully ReMapped to {new_mr_name}",
     )
 
 

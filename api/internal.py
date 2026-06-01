@@ -36,7 +36,7 @@ async def get_doctor_mr_mappings(
     manager_name: str | None = None,
     geolocation: str | None = None,
     page: int = 1,
-    page_size: int = 16,
+    page_size: int = 15,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
     tenant_id: str = Depends(resolve_tenant_id),

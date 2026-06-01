@@ -173,7 +173,7 @@ endblock %} {% block content %}
         <ul id="remap-mr-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
       </div>
       <button class="btn btn-primary btn-sm w-100" onclick="submitRemap()">
-        Confirm remap
+        Confirm ReMap
       </button>
     </div>
   </div>
@@ -220,6 +220,7 @@ endblock %} {% block content %}
     geolocation: "",
   };
   let activeDoctorId = null;
+  let activeDrawerMrName = null;
 
   function applyFilters() {
     activeFilters.doctor_name = document.getElementById("filter-doctor").value;
@@ -265,7 +266,7 @@ endblock %} {% block content %}
         Object.entries(activeFilters).filter(([_, v]) => v),
       ),
       page: currentPage,
-      page_size: 16,
+      page_size: 15,
     });
 
     // Sync URL with filters
@@ -317,7 +318,7 @@ endblock %} {% block content %}
             <td>${mrBadge}</td>
             <td>${managerText}</td>
             <td>${locText}</td>
-            <td><button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); openDrawer(${JSON.stringify(item).replace(/"/g, "&quot;")})">Remap</button></td>
+            <td><button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); openDrawer(${JSON.stringify(item).replace(/"/g, "&quot;")})">ReMap</button></td>
         `;
       tbody.appendChild(tr);
     });
@@ -388,6 +389,12 @@ endblock %} {% block content %}
       if (lowerQuery) {
           filtered = allMRs.filter(mr => mr.mr_name.toLowerCase().includes(lowerQuery));
       }
+
+      // Exclude the currently assigned MR from the suggestions
+      if (activeDrawerMrName) {
+          filtered = filtered.filter(mr => mr.mr_name !== activeDrawerMrName);
+      }
+
       filtered = filtered.slice(0, 50); // limit to 50 for performance
       
       if (filtered.length === 0) {
@@ -505,6 +512,7 @@ endblock %} {% block content %}
   // Drawer logic
   function openDrawer(item) {
     activeDoctorId = item.doctor_id;
+    activeDrawerMrName = item.mr_name || null;
     document.getElementById("drawer-doctor-name").textContent =
       item.doctor_name;
     document.getElementById("drawer-doctor-speciality").textContent =
@@ -574,7 +582,7 @@ endblock %} {% block content %}
         showToast(data.message);
         fetchMappings();
       } else {
-        showDrawerError("Remap failed. Please try again.");
+        showDrawerError("ReMap failed. Please try again.");
       }
     } catch (e) {
       showDrawerError("An unexpected error occurred.");
