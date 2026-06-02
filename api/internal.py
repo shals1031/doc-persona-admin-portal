@@ -9,8 +9,8 @@ from middleware.tenant import resolve_tenant_id
 from schemas.auth import RequestContext
 from workers.tasks import refresh_dashboard_aggregates
 
-from schemas.mapping import MappingFilterParams, MappingListResponse, RemapRequest, RemapResponse
-from services.mapping_service import list_mappings, remap_doctor, get_filter_options
+from schemas.mapping import MappingFilterParams, MappingListResponse, RemapRequest, RemapResponse, BulkRemapRequest, BulkRemapResponse
+from services.mapping_service import list_mappings, remap_doctor, bulk_remap_doctors, get_all_doctor_ids, get_filter_options
 from models.auth import User
 from sqlalchemy import select
 
@@ -34,7 +34,6 @@ async def get_doctor_mr_mappings(
     doctor_name: str | None = None,
     mr_name: str | None = None,
     manager_name: str | None = None,
-    geolocation: str | None = None,
     page: int = 1,
     page_size: int = 15,
     db: AsyncSession = Depends(get_db),
@@ -45,7 +44,6 @@ async def get_doctor_mr_mappings(
         doctor_name=doctor_name,
         mr_name=mr_name,
         manager_name=manager_name,
-        geolocation=geolocation,
         page=page,
         page_size=page_size,
     )
@@ -67,6 +65,20 @@ async def remap_doctor_mr(
     return await remap_doctor(db, tenant_id, doctor_id, payload)
 
 
+@router.patch(
+    "/mappings/bulk-remap",
+    response_model=BulkRemapResponse,
+    summary="Bulk remap multiple doctors to a single MR",
+)
+async def bulk_remap_doctor_mr(
+    payload: BulkRemapRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+    tenant_id: str = Depends(resolve_tenant_id),
+):
+    return await bulk_remap_doctors(db, tenant_id, payload)
+
+
 @router.get(
     "/mappings/filter-options",
     summary="Get distinct filter options for mappings dropdowns"
@@ -77,6 +89,27 @@ async def get_mappings_filter_options(
     tenant_id: str = Depends(resolve_tenant_id),
 ):
     return await get_filter_options(db, tenant_id)
+
+
+@router.get(
+    "/mappings/doctor-ids",
+    summary="Get all doctor IDs matching filters (for Select All across pages)",
+)
+async def get_all_doctor_ids_endpoint(
+    doctor_name: str | None = None,
+    mr_name: str | None = None,
+    manager_name: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_admin),
+    tenant_id: str = Depends(resolve_tenant_id),
+):
+    filters = MappingFilterParams(
+        doctor_name=doctor_name,
+        mr_name=mr_name,
+        manager_name=manager_name,
+    )
+    ids = await get_all_doctor_ids(db, tenant_id, filters)
+    return {"doctor_ids": ids, "total": len(ids)}
 
 
 @router.get(

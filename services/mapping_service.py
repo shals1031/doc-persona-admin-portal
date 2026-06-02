@@ -2,6 +2,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from repositories.mapping_repo import (
     get_mappings_filtered,
     update_mapping_mr,
+    bulk_update_mapping_mr,
+    get_all_filtered_doctor_ids,
 )
 from schemas.mapping import (
     MappingFilterParams,
@@ -9,6 +11,8 @@ from schemas.mapping import (
     DoctorMRMappingRead,
     RemapRequest,
     RemapResponse,
+    BulkRemapRequest,
+    BulkRemapResponse,
 )
 from fastapi import HTTPException
 import math
@@ -53,6 +57,36 @@ async def remap_doctor(
         new_mr_name=new_mr_name,
         message=f"{doc_name} successfully ReMapped to {new_mr_name}",
     )
+
+
+async def bulk_remap_doctors(
+    db: AsyncSession,
+    tenant_id: str,
+    payload: BulkRemapRequest,
+) -> BulkRemapResponse:
+    try:
+        count, new_mr_name = await bulk_update_mapping_mr(
+            db,
+            tenant_id,
+            doctor_ids=payload.doctor_ids,
+            new_mr_user_id=payload.new_mr_user_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return BulkRemapResponse(
+        remapped_count=count,
+        new_mr_name=new_mr_name,
+        message=f"{count} doctor(s) successfully ReMapped to {new_mr_name}",
+    )
+
+
+async def get_all_doctor_ids(
+    db: AsyncSession,
+    tenant_id: str,
+    filters: MappingFilterParams,
+) -> list[str]:
+    return await get_all_filtered_doctor_ids(db, tenant_id, filters)
 
 
 async def get_filter_options(db: AsyncSession, tenant_id: str) -> dict:
