@@ -4,6 +4,17 @@ endblock %} {% block content %}
   <div>
     <h2>Doctor–MR mapping</h2>
   </div>
+  <div>
+    <button
+      type="button"
+      id="bulk-remap-btn"
+      class="btn btn-primary btn-sm"
+      onclick="openBulkDrawer()"
+      disabled
+    >
+      Bulk ReMap (<span id="bulk-count">0</span>)
+    </button>
+  </div>
 </div>
 
 <!-- Filter Bar -->
@@ -46,18 +57,6 @@ endblock %} {% block content %}
         />
         <ul id="manager-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
       </div>
-      <div class="col-md-2 position-relative">
-        <label class="form-label small text-muted">Location</label>
-        <input
-          type="text"
-          id="filter-location"
-          class="form-control form-control-sm"
-          placeholder="All"
-          autocomplete="off"
-          onkeypress="if (event.key === 'Enter') applyFilters();"
-        />
-        <ul id="location-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
-      </div>
       <div class="col-auto d-flex gap-2">
         <button
           type="button"
@@ -93,6 +92,7 @@ endblock %} {% block content %}
     <table class="table table-hover table-sm mb-0">
       <thead class="table-light">
         <tr>
+          <th style="width: 50px;" class="ps-4"><input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" /></th>
           <th>Doctor</th>
           <th>MR name</th>
           <th>Manager</th>
@@ -185,6 +185,84 @@ endblock %} {% block content %}
   onclick="closeDrawer()"
 ></div>
 
+<!-- Bulk Remap Drawer -->
+<div
+  class="offcanvas offcanvas-end shadow"
+  tabindex="-1"
+  id="bulkRemapDrawer"
+  aria-labelledby="bulkRemapDrawerLabel"
+>
+  <div class="offcanvas-header border-bottom">
+    <h5 id="bulkRemapDrawerLabel" class="offcanvas-title mb-0">
+      Bulk ReMap
+    </h5>
+    <button
+      type="button"
+      class="btn-close text-reset"
+      onclick="closeBulkDrawer()"
+      aria-label="Close"
+    ></button>
+  </div>
+  <div class="offcanvas-body">
+    <div
+      id="bulk-drawer-error"
+      class="alert alert-danger d-none py-2 px-3 small"
+    ></div>
+
+    <div class="mb-4">
+      <h6 class="text-uppercase text-muted small fw-bold mb-2">Selected Doctors</h6>
+      <p class="mb-1 small">
+        <strong><span id="bulk-drawer-count">0</span></strong> doctor(s) selected for ReMapping
+      </p>
+    </div>
+
+    <div class="mb-4">
+      <h6 class="text-uppercase text-muted small fw-bold mb-2">Reassign all to</h6>
+      <div class="position-relative">
+        <input type="hidden" id="bulk-remap-mr-id" />
+        <input
+          type="text"
+          id="bulk-remap-mr-input"
+          class="form-control form-control-sm mb-3"
+          placeholder="Search for an MR..."
+          autocomplete="off"
+        />
+        <ul id="bulk-remap-mr-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      </div>
+      <button class="btn btn-primary btn-sm w-100" onclick="submitBulkRemap()">
+        Confirm Bulk ReMap
+      </button>
+    </div>
+  </div>
+</div>
+<div
+  class="offcanvas-backdrop fade show"
+  id="bulk-remap-backdrop"
+  style="display: none"
+></div>
+
+<!-- Bulk Remap Confirmation Modal -->
+<div class="modal fade" id="bulkConfirmModal" tabindex="-1" aria-labelledby="bulkConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="bulkConfirmModalLabel">Confirm Bulk ReMap</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-1">
+        <p class="mb-0">
+          Are you sure you want to ReMap <strong><span id="confirm-modal-count">0</span></strong> doctor(s) to <strong class="text-primary"><span id="confirm-modal-mr-name"></span></strong> ?
+        </p>
+        <p class="text-muted small mt-2 mb-0">This will transfer all their past form submissions to the new MR.</p>
+      </div>
+      <div class="modal-footer border-top-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm px-4" onclick="executeBulkRemap()" id="confirm-bulk-btn">Yes, Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast container -->
 <div
   class="position-fixed bottom-0 start-50 translate-middle-x p-3"
@@ -221,14 +299,13 @@ endblock %} {% block content %}
   };
   let activeDoctorId = null;
   let activeDrawerMrName = null;
+  let selectedDoctorIds = new Set();
 
   function applyFilters() {
     activeFilters.doctor_name = document.getElementById("filter-doctor").value;
     activeFilters.mr_name = document.getElementById("filter-mr").value;
     activeFilters.manager_name =
       document.getElementById("filter-manager").value;
-    activeFilters.geolocation =
-      document.getElementById("filter-location").value;
     currentPage = 1;
     fetchMappings();
   }
@@ -237,12 +314,10 @@ endblock %} {% block content %}
     document.getElementById("filter-doctor").value = "";
     document.getElementById("filter-mr").value = "";
     document.getElementById("filter-manager").value = "";
-    document.getElementById("filter-location").value = "";
     activeFilters = {
       doctor_name: "",
       mr_name: "",
       manager_name: "",
-      geolocation: "",
     };
     currentPage = 1;
     fetchMappings();
@@ -291,7 +366,7 @@ endblock %} {% block content %}
     tbody.innerHTML = "";
 
     if (data.items.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No records found</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No records found</td></tr>`;
       return;
     }
 
@@ -299,7 +374,7 @@ endblock %} {% block content %}
       const tr = document.createElement("tr");
       tr.style.cursor = "pointer";
       tr.onclick = (e) => {
-        if (!e.target.closest("button")) {
+        if (!e.target.closest("button") && !e.target.closest("input[type=checkbox]")) {
           openDrawer(item);
         }
       };
@@ -312,8 +387,10 @@ endblock %} {% block content %}
         : `<span class="badge bg-warning text-dark">Unassigned</span>`;
       const managerText = item.manager_name || "—";
       const locText = item.geolocation || "—";
+      const isChecked = selectedDoctorIds.has(item.doctor_id) ? "checked" : "";
 
       tr.innerHTML = `
+            <td class="ps-4"><input type="checkbox" class="doctor-checkbox" data-doctor-id="${item.doctor_id}" ${isChecked} onclick="event.stopPropagation(); toggleDoctorSelection('${item.doctor_id}', this)" /></td>
             <td>${item.doctor_name}${doctorSpec}</td>
             <td>${mrBadge}</td>
             <td>${managerText}</td>
@@ -322,6 +399,9 @@ endblock %} {% block content %}
         `;
       tbody.appendChild(tr);
     });
+
+    updateBulkButton();
+    updateSelectAllCheckbox();
   }
 
   // Render Pagination
@@ -450,7 +530,6 @@ endblock %} {% block content %}
       setupAutocomplete("filter-doctor", "doctor-autocomplete", filterData.doctors);
       setupAutocomplete("filter-mr", "mr-autocomplete", filterData.mrs);
       setupAutocomplete("filter-manager", "manager-autocomplete", filterData.managers);
-      setupAutocomplete("filter-location", "location-autocomplete", filterData.locations);
     } catch (e) {
       console.error("Failed to load filter options", e);
     }
@@ -589,6 +668,209 @@ endblock %} {% block content %}
     }
   }
 
+  // --- Bulk ReMap Logic ---
+
+  function toggleDoctorSelection(doctorId, checkbox) {
+    if (checkbox.checked) {
+      selectedDoctorIds.add(doctorId);
+    } else {
+      selectedDoctorIds.delete(doctorId);
+    }
+    updateBulkButton();
+    updateSelectAllCheckbox();
+  }
+
+  async function toggleSelectAll(masterCheckbox) {
+    if (masterCheckbox.checked) {
+      // Fetch ALL doctor IDs across all pages matching current filters
+      const params = new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(activeFilters).filter(([_, v]) => v),
+        ),
+      );
+      try {
+        const res = await fetch(`${API_BASE}/mappings/doctor-ids?${params}`);
+        const data = await res.json();
+        data.doctor_ids.forEach(id => selectedDoctorIds.add(id));
+      } catch (e) {
+        console.error("Failed to fetch all doctor IDs", e);
+      }
+      // Also check all visible checkboxes on the current page
+      const checkboxes = document.querySelectorAll(".doctor-checkbox");
+      checkboxes.forEach(cb => { cb.checked = true; });
+    } else {
+      // Uncheck all — clear the entire Set
+      selectedDoctorIds.clear();
+      const checkboxes = document.querySelectorAll(".doctor-checkbox");
+      checkboxes.forEach(cb => { cb.checked = false; });
+    }
+    updateBulkButton();
+  }
+
+  function updateBulkButton() {
+    const btn = document.getElementById("bulk-remap-btn");
+    const countSpan = document.getElementById("bulk-count");
+    countSpan.textContent = selectedDoctorIds.size;
+    btn.disabled = selectedDoctorIds.size === 0;
+  }
+
+  function updateSelectAllCheckbox() {
+    const master = document.getElementById("select-all-checkbox");
+    const checkboxes = document.querySelectorAll(".doctor-checkbox");
+    if (checkboxes.length === 0) {
+      master.checked = false;
+      return;
+    }
+    const allChecked = [...checkboxes].every(cb => cb.checked);
+    master.checked = allChecked;
+  }
+
+  function openBulkDrawer() {
+    if (selectedDoctorIds.size === 0) return;
+    document.getElementById("bulk-drawer-count").textContent = selectedDoctorIds.size;
+    document.getElementById("bulk-remap-mr-input").value = "";
+    document.getElementById("bulk-remap-mr-id").value = "";
+    document.getElementById("bulk-drawer-error").classList.add("d-none");
+    setupBulkMRAutocomplete();
+    document.getElementById("bulkRemapDrawer").classList.add("show");
+    document.getElementById("bulk-remap-backdrop").style.display = "block";
+  }
+
+  function closeBulkDrawer() {
+    document.getElementById("bulkRemapDrawer").classList.remove("show");
+    document.getElementById("bulk-remap-backdrop").style.display = "none";
+  }
+
+  function showBulkDrawerError(msg) {
+    const err = document.getElementById("bulk-drawer-error");
+    err.textContent = msg;
+    err.classList.remove("d-none");
+  }
+
+  function setupBulkMRAutocomplete() {
+    const input = document.getElementById("bulk-remap-mr-input");
+    const dropdown = document.getElementById("bulk-remap-mr-autocomplete");
+    const hiddenId = document.getElementById("bulk-remap-mr-id");
+
+    // Remove old listeners by cloning
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+
+    const renderDropdown = (query) => {
+      dropdown.innerHTML = "";
+      const lowerQuery = (query || "").toLowerCase();
+      let filtered = allMRs;
+      if (lowerQuery) {
+        filtered = allMRs.filter(mr => mr.mr_name.toLowerCase().includes(lowerQuery));
+      }
+      filtered = filtered.slice(0, 50);
+      if (filtered.length === 0) {
+        dropdown.classList.remove("show");
+        return;
+      }
+      filtered.forEach(mr => {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.className = "dropdown-item text-truncate";
+        a.href = "#";
+        a.title = mr.mr_name;
+        a.textContent = mr.mr_name;
+        a.onmousedown = (e) => {
+          e.preventDefault();
+          newInput.value = mr.mr_name;
+          hiddenId.value = mr.mr_user_id;
+          dropdown.classList.remove("show");
+        };
+        li.appendChild(a);
+        dropdown.appendChild(li);
+      });
+      dropdown.classList.add("show");
+    };
+
+    newInput.addEventListener("input", (e) => {
+      hiddenId.value = "";
+      renderDropdown(e.target.value);
+    });
+    newInput.addEventListener("focus", (e) => {
+      renderDropdown(e.target.value);
+    });
+    newInput.addEventListener("blur", () => {
+      dropdown.classList.remove("show");
+      if (!hiddenId.value) newInput.value = "";
+    });
+  }
+
+  function submitBulkRemap() {
+    const newMrId = document.getElementById("bulk-remap-mr-id").value;
+    const newMrName = document.getElementById("bulk-remap-mr-input").value;
+    
+    if (!newMrId) {
+      showBulkDrawerError("Please select an MR from the dropdown.");
+      return;
+    }
+
+    // Populate and show the confirmation modal
+    document.getElementById("confirm-modal-count").textContent = selectedDoctorIds.size;
+    document.getElementById("confirm-modal-mr-name").textContent = newMrName;
+    
+    // Vanilla JS trigger for Bootstrap 5 modal
+    const confirmModal = new bootstrap.Modal(document.getElementById('bulkConfirmModal'));
+    confirmModal.show();
+  }
+
+  async function executeBulkRemap() {
+    const newMrId = document.getElementById("bulk-remap-mr-id").value;
+    const confirmBtn = document.getElementById("confirm-bulk-btn");
+    
+    const payload = {
+      doctor_ids: Array.from(selectedDoctorIds),
+      new_mr_user_id: newMrId,
+    };
+
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
+    try {
+      const res = await fetch(`${API_BASE}/mappings/bulk-remap`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        
+        // Hide modal
+        const modalEl = document.getElementById('bulkConfirmModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+        
+        closeBulkDrawer();
+        selectedDoctorIds.clear();
+        updateBulkButton();
+        updateSelectAllCheckbox();
+        showToast(data.message);
+        fetchMappings();
+      } else {
+        // Hide modal and show error in drawer
+        const modalEl = document.getElementById('bulkConfirmModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+        
+        showBulkDrawerError(`Bulk ReMap failed for all ${selectedDoctorIds.size} doctor(s). No changes were made. Please try again.`);
+      }
+    } catch (e) {
+      const modalEl = document.getElementById('bulkConfirmModal');
+      const modalInstance = bootstrap.Modal.getInstance(modalEl);
+      if (modalInstance) modalInstance.hide();
+      
+      showBulkDrawerError("An unexpected error occurred.");
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Yes, Confirm';
+    }
+  }
+
   // Initialise
   document.addEventListener("DOMContentLoaded", () => {
     // Parse URL params
@@ -599,8 +881,6 @@ endblock %} {% block content %}
       activeFilters.mr_name = urlParams.get("mr_name");
     if (urlParams.has("manager_name"))
       activeFilters.manager_name = urlParams.get("manager_name");
-    if (urlParams.has("geolocation"))
-      activeFilters.geolocation = urlParams.get("geolocation");
     if (urlParams.has("page"))
       currentPage = parseInt(urlParams.get("page")) || 1;
 
@@ -609,8 +889,6 @@ endblock %} {% block content %}
     document.getElementById("filter-mr").value = activeFilters.mr_name;
     document.getElementById("filter-manager").value =
       activeFilters.manager_name;
-    document.getElementById("filter-location").value =
-      activeFilters.geolocation;
 
     fetchMappings();
     loadMROptions();

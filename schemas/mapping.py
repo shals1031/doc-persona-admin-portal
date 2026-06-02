@@ -7,7 +7,6 @@ class MappingFilterParams(BaseModel):
     doctor_name: Optional[str] = None      # free-text search
     mr_name: Optional[str] = None          # free-text search
     manager_name: Optional[str] = None     # free-text search
-    geolocation: Optional[str] = None      # free-text search
     page: int = 1
     page_size: int = 15
 
@@ -46,5 +45,18 @@ class RemapResponse(BaseModel):
     doctor_id: str
     doctor_name: str
     old_mr_name: Optional[str] = None
+    new_mr_name: str
+    message: str
+
+
+class BulkRemapRequest(BaseModel):
+    """Body for the bulk remap endpoint."""
+    doctor_ids: list[str]
+    new_mr_user_id: str
+
+
+class BulkRemapResponse(BaseModel):
+    """Confirmation returned after bulk remap."""
+    remapped_count: int
     new_mr_name: str
     message: str

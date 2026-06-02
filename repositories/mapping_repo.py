@@ -46,11 +46,6 @@ async def get_mappings_filtered(
         base_query = base_query.where(MRUser.full_name.ilike(f"%{filters.mr_name}%"))
     if filters.manager_name:
         base_query = base_query.where(ManagerUser.full_name.ilike(f"%{filters.manager_name}%"))
-    if filters.geolocation:
-        base_query = base_query.where(
-            (Doctor.area.ilike(f"%{filters.geolocation}%")) |
-            (Doctor.state.ilike(f"%{filters.geolocation}%"))
-        )
 
     # Subquery for count
     count_query = select(func.count()).select_from(base_query.subquery())
@@ -82,14 +77,40 @@ async def get_mappings_filtered(
     return output, total
 
 
-async def get_mapping_by_doctor_id(
+async def get_all_filtered_doctor_ids(
     db: AsyncSession,
     tenant_id: str,
-    doctor_id: str,
-) -> dict | None:
-    # We fetch it again using the exact same logic just for a single doctor if needed,
-    # but the service only needs to do an update.
-    pass
+    filters: MappingFilterParams,
+) -> list[str]:
+    """
+    Returns all doctor IDs matching the current filters (no pagination).
+    Used by the Select All checkbox to select doctors across all pages.
+    """
+    MRUser = aliased(User, name="mr_user")
+    ManagerUser = aliased(User, name="manager_user")
+
+    query = (
+        select(Doctor.id)
+        .select_from(Doctor)
+        .outerjoin(
+            MRDoctorMapping,
+            (MRDoctorMapping.doctor_id == Doctor.id) & (MRDoctorMapping.tenant_id == Doctor.tenant_id)
+        )
+        .outerjoin(MRUser, MRDoctorMapping.mr_id == MRUser.id)
+        .outerjoin(ManagerUser, MRUser.reporting_to == ManagerUser.id)
+        .where(Doctor.tenant_id == tenant_id)
+    )
+
+    if filters.doctor_name:
+        query = query.where(Doctor.name.ilike(f"%{filters.doctor_name}%"))
+    if filters.mr_name:
+        query = query.where(MRUser.full_name.ilike(f"%{filters.mr_name}%"))
+    if filters.manager_name:
+        query = query.where(ManagerUser.full_name.ilike(f"%{filters.manager_name}%"))
+
+    result = await db.execute(query)
+    return [str(row[0]) for row in result.all()]
+
 
 
 async def update_mapping_mr(
@@ -162,13 +183,59 @@ async def update_mapping_mr(
     return doctor_name, new_mr_name, new_manager_name
 
 
+async def bulk_update_mapping_mr(
+    db: AsyncSession,
+    tenant_id: str,
+    doctor_ids: list[str],
+    new_mr_user_id: str,
+) -> tuple[int, str]:
+    """
+    Atomically remap multiple doctors to a single MR.
+    Returns (remapped_count, new_mr_name).
+    If any part fails, the entire transaction rolls back.
+    """
+    t_id = uuid.UUID(str(tenant_id))
+    mr_uuid = uuid.UUID(str(new_mr_user_id))
+    doc_uuids = [uuid.UUID(str(d)) for d in doctor_ids]
+
+    # Validate the new MR exists
+    mr_res = await db.execute(select(User).where(User.id == mr_uuid))
+    mr = mr_res.scalar_one_or_none()
+    if not mr:
+        raise ValueError("Invalid MR user ID")
+
+    new_mr_name = mr.full_name
+
+    # 1. Bulk delete old mappings for all selected doctors
+    await db.execute(
+        delete(MRDoctorMapping)
+        .where(MRDoctorMapping.doctor_id.in_(doc_uuids))
+        .where(MRDoctorMapping.tenant_id == t_id)
+    )
+
+    # 2. Bulk insert new mappings
+    new_mappings = [
+        MRDoctorMapping(mr_id=mr_uuid, doctor_id=d_id, tenant_id=t_id)
+        for d_id in doc_uuids
+    ]
+    db.add_all(new_mappings)
+
+    # 3. Bulk transfer ownership of past submissions to the new MR
+    await db.execute(
+        update(Submission)
+        .where(Submission.doctor_id.in_(doc_uuids))
+        .where(Submission.tenant_id == t_id)
+        .values(submitted_by=mr_uuid)
+    )
+
+    # Atomic commit — all or nothing
+    await db.commit()
+    return len(doc_uuids), new_mr_name
+
+
 async def get_mapping_filter_options(db: AsyncSession, tenant_id: str) -> dict:
     doc_res = await db.execute(select(Doctor.name).where(Doctor.tenant_id == tenant_id).distinct())
     doctors = sorted([d for d in doc_res.scalars().all() if d])
-    
-    area_res = await db.execute(select(Doctor.area).where(Doctor.tenant_id == tenant_id).distinct())
-    state_res = await db.execute(select(Doctor.state).where(Doctor.tenant_id == tenant_id).distinct())
-    locations = set([a for a in area_res.scalars().all() if a] + [s for s in state_res.scalars().all() if s])
     
     mr_res = await db.execute(select(User.full_name).where(User.tenant_id == tenant_id, User.role == "MR").distinct())
     mrs = sorted([m for m in mr_res.scalars().all() if m])
@@ -189,6 +256,5 @@ async def get_mapping_filter_options(db: AsyncSession, tenant_id: str) -> dict:
     return {
         "doctors": doctors,
         "mrs": mrs,
-        "managers": managers,
-        "locations": sorted(list(locations))
+        "managers": managers
     }
