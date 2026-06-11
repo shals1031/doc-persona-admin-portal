@@ -1,0 +1,1194 @@
+{% extends "base.html" %}
+
+{% block title %}Form Builder | Doc Persona Admin{% endblock %}
+
+{% block head %}
+<style>
+    .builder-container {
+        height: calc(100vh - 140px);
+        display: flex;
+        gap: 20px;
+    }
+    .pane {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 .15rem 1.75rem 0 rgba(58,59,69,.15);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .pane-header {
+        padding: 15px 20px;
+        background: #f8f9fc;
+        border-bottom: 1px solid #e3e6f0;
+        font-weight: bold;
+    }
+    .pane-body {
+        padding: 20px;
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+    .left-pane { width: 35%; }
+    .right-pane { width: 65%; }
+    
+    .section-card {
+        border: 1px solid #e3e6f0;
+        border-radius: 4px;
+        margin-bottom: 15px;
+    }
+    .section-header {
+        background: #f8f9fc;
+        padding: 10px 15px;
+        border-bottom: 1px solid #e3e6f0;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .question-list {
+        min-height: 20px;
+        padding: 10px;
+    }
+    .question-item {
+        background: #fff;
+        border: 1px solid #d1d3e2;
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        cursor: grab;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: border-color 0.2s;
+    }
+    .question-item:active { cursor: grabbing; }
+    .question-item.active {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 2px rgba(78,115,223,0.25);
+    }
+    .question-item.sortable-ghost { opacity: 0.4; }
+    
+    .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1050;
+    }
+    .pending-badge {
+        display: none;
+        background: #f6c23e;
+        color: #000;
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 10px;
+        margin-left: 8px;
+    }
+    .pending-badge.show { display: inline-block; }
+</style>
+<!-- Include SortableJS -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800 d-flex align-items-center">
+        <a href="/form-management" class="text-decoration-none text-muted"><i class="fas fa-arrow-left me-2"></i></a>
+        Form Builder <span id="formNameTitle" class="text-primary ms-2 me-3"></span>
+        <div id="versionBadge" class="badge bg-secondary fs-6 me-3">Loading...</div>
+    </h1>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-primary shadow-sm" id="btnSubmitForm" disabled>
+            <i class="fas fa-paper-plane me-1"></i> Submit Form
+        </button>
+        <button class="btn btn-primary shadow-sm" id="btnActivateForm" disabled>
+            <i class="fas fa-play me-1"></i> Activate Form
+        </button>
+    </div>
+</div>
+
+<div class="builder-container">
+    <!-- Left Pane: Structure -->
+    <div class="pane left-pane">
+        <div class="pane-header d-flex justify-content-between align-items-center">
+            <span>Form Structure <span id="pendingBadge" class="pending-badge">Unsaved Changes</span></span>
+        </div>
+        <div class="pane-body" id="structureBody">
+            <div id="loadingSpinner" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            
+            <div id="sectionsContainer"></div>
+        </div>
+    </div>
+
+    <!-- Right Pane: Configuration -->
+    <div class="pane right-pane">
+        <div class="pane-header">
+            Question Configuration
+        </div>
+        <div class="pane-body">
+            <div id="noSelectionMsg" class="text-center text-muted py-5">
+                <i class="fas fa-hand-pointer fa-3x mb-3"></i>
+                <p>Select a question from the left panel to edit its properties.</p>
+            </div>
+            
+            <div id="configForm" class="d-none">
+                <form id="questionForm">
+                    <input type="hidden" id="q_id">
+                    
+                    <div class="mb-3 d-none">
+                        <label class="form-label font-weight-bold">Question ID</label>
+                        <input type="text" class="form-control" id="q_id_display" disabled>
+                        <small class="form-text text-muted">Internal identifier (read-only).</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Label / Text</label>
+                        <input type="text" class="form-control" id="q_label" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label font-weight-bold">Type</label>
+                            <select class="form-select" id="q_type">
+                                <option value="text">Text</option>
+                                <option value="textarea">Textarea</option>
+                                <option value="number">Number</option>
+                                <option value="date">Date</option>
+                                <option value="radio">Radio</option>
+                                <option value="dropdown">Dropdown</option>
+                                <option value="multiselect">Multi-Select</option>
+                                <option value="boolean">Boolean (Yes/No)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center mt-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="q_required">
+                                <label class="form-check-label" for="q_required">Required Question</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Placeholder / Text (Optional)</label>
+                        <input type="text" class="form-control" id="q_placeholder">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Help Text (Optional)</label>
+                        <input type="text" class="form-control" id="q_helpText">
+                    </div>
+
+                    <!-- Options Editor (Only shown for dropdown, radio, multiselect) -->
+                    <div id="optionsContainerWrapper" class="d-none mb-4">
+                        <label class="form-label font-weight-bold">Options</label>
+                        <div class="card">
+                            <div class="card-body p-2" id="optionsList">
+                                <!-- Options injected here -->
+                            </div>
+                            <div class="card-footer bg-white border-top-0 p-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btnAddOption">
+                                    <i class="fas fa-plus"></i> Add Option
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-danger" id="btnDeleteQuestion">
+                            <i class="fas fa-trash me-2"></i> Delete Question
+                        </button>
+                        <button type="button" class="btn btn-primary shadow-sm px-4" id="btnApplyLocalChanges">
+                            <i class="fas fa-save me-2"></i> Saved as Draft
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Question Modal -->
+<div class="modal fade" id="deleteQuestionModal" tabindex="-1" aria-labelledby="deleteQuestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteQuestionModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to remove this question from the layout?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDeleteQuestion">
+                    <i class="fas fa-trash me-1"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submit Form Modal -->
+<div class="modal fade" id="submitModal" tabindex="-1" aria-labelledby="submitModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="submitModalLabel">Submit Form for Activation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info fw-bold">
+                    <i class="fas fa-info-circle me-2"></i> This will submit your draft and lock it for activation.
+                </div>
+                <p>Are you sure you want to submit this form? <strong>This will NOT publish the form to production or the MR apps yet.</strong> You will still need to click "Activate Form" afterwards to push it live.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmSubmit">
+                    <i class="fas fa-paper-plane me-1"></i> Confirm Submit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activate Form Modal -->
+<div class="modal fade" id="activateModal" tabindex="-1" aria-labelledby="activateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="activateModalLabel">Activate Form</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger fw-bold">
+                    <i class="fas fa-exclamation-triangle me-2"></i> WARNING: Activating this form will immediately push these changes live to all users!
+                </div>
+                <h6>Summary of Changes:</h6>
+                <div id="diffSummaryContainer" class="p-3 bg-light border rounded" style="max-height: 300px; overflow-y: auto; font-size: 0.9rem;">
+                    <!-- Diff injected here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmActivate">
+                    <i class="fas fa-play me-1"></i> Confirm & Activate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add Question Modal -->
+<div class="modal fade" id="addQuestionModal" tabindex="-1" aria-labelledby="addQuestionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addQuestionModalLabel">Add New Question</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="new_q_section_id">
+                
+                <div class="mb-3 d-none">
+                    <label class="form-label fw-bold">Question ID <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="new_q_id">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Label / Text <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="new_q_label" placeholder="e.g. What is the doctor's age?">
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="new_q_type">
+                            <option value="text">Text</option>
+                            <option value="textarea">Textarea</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                            <option value="radio">Radio</option>
+                            <option value="dropdown">Dropdown</option>
+                            <option value="multiselect">Multi-Select</option>
+                            <option value="boolean">Boolean (Yes/No)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-center mt-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="new_q_required">
+                            <label class="form-check-label" for="new_q_required">Required</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Placeholder (Optional)</label>
+                    <input type="text" class="form-control" id="new_q_placeholder">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Help Text (Optional)</label>
+                    <input type="text" class="form-control" id="new_q_helpText">
+                </div>
+                
+                <!-- New Question Options (for radio/dropdown/multiselect) -->
+                <div id="newQOptionsWrapper" class="d-none mb-3">
+                    <label class="form-label fw-bold">Options</label>
+                    <div class="card">
+                        <div class="card-body p-2" id="newQOptionsList"></div>
+                        <div class="card-footer bg-white border-top-0 p-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btnAddNewQOption">
+                                <i class="fas fa-plus"></i> Add Option
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btnSubmitNewQuestion">
+                    <i class="fas fa-check me-1"></i> Apply to Layout
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-container">
+    <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMessage">
+          Changes saved successfully!
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const FORM_ID = "{{ form_id }}";
+    const OPTION_TYPES = ['radio', 'dropdown', 'multiselect'];
+    let currentSchema = null;
+    let selectedQuestionId = null;
+    let hasUnsavedChanges = false;
+    let baseVersion = "1.0"; // Will hold the DB version for incrementing
+    let currentDraftId = "{{ draft_id if draft_id else '' }}";
+    if (currentDraftId === "None" || currentDraftId === "null") currentDraftId = "";
+
+    let liveSchema = null;
+    let isSubmitted = false;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadForm();
+        
+        // Option Add Button (edit form)
+        document.getElementById('btnAddOption').addEventListener('click', () => addOptionRow('', ''));
+        
+        // Apply details locally
+        document.getElementById('btnApplyLocalChanges').addEventListener('click', applyQuestionDetailsLocally);
+        
+        // Delete Question
+        document.getElementById('btnDeleteQuestion').addEventListener('click', () => {
+            if (!selectedQuestionId) return;
+            new bootstrap.Modal(document.getElementById('deleteQuestionModal')).show();
+        });
+        
+        // Confirm Delete Question (in modal)
+        document.getElementById('btnConfirmDeleteQuestion').addEventListener('click', () => {
+            bootstrap.Modal.getInstance(document.getElementById('deleteQuestionModal')).hide();
+            deleteQuestionLocally();
+        });
+        
+        // Submit Form Button (opens modal)
+        document.getElementById('btnSubmitForm').addEventListener('click', () => {
+            new bootstrap.Modal(document.getElementById('submitModal')).show();
+        });
+        
+        // Confirm Submit (in modal)
+        document.getElementById('btnConfirmSubmit').addEventListener('click', async () => {
+            try {
+                const btn = document.getElementById('btnConfirmSubmit');
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Submitting...`;
+                
+                const publishResponse = await fetch(`/api/forms/${FORM_ID}/versions/${currentDraftId}/publish`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ setAsCurrent: false })
+                });
+
+                if (!publishResponse.ok) throw new Error("Failed to submit draft.");
+                
+                isSubmitted = true;
+                updateButtonStates();
+                showToast("Form successfully submitted and is ready for activation.");
+                bootstrap.Modal.getInstance(document.getElementById('submitModal')).hide();
+            } catch (error) {
+                console.error(error);
+                showToast(error.message, 'danger');
+            } finally {
+                const btn = document.getElementById('btnConfirmSubmit');
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-paper-plane me-1"></i> Confirm Submit`;
+            }
+        });
+        
+        // Activate Form Button (opens modal)
+        document.getElementById('btnActivateForm').addEventListener('click', () => {
+            const container = document.getElementById('diffSummaryContainer');
+            container.innerHTML = generateSchemaDiff();
+            new bootstrap.Modal(document.getElementById('activateModal')).show();
+        });
+        
+        // Confirm Activate (inside modal)
+        document.getElementById('btnConfirmActivate').addEventListener('click', async () => {
+            try {
+                const btn = document.getElementById('btnConfirmActivate');
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Activating...`;
+                
+                // Increment base version properly
+                const parts = baseVersion.split(' ')[0].split('.');
+                let major = parseInt(parts[0]) || 1;
+                let minor = parseInt(parts[1]) || 0;
+                
+                if (minor >= 9) {
+                    major += 1;
+                    minor = 0;
+                } else {
+                    minor += 1;
+                }
+                const newVersionString = `${major}.${minor}`;
+                currentSchema.version = newVersionString;
+
+                // 1. Update schema with final version string
+                await fetch(`/api/forms/${FORM_ID}/versions/${currentDraftId}/schema`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schemaJson: currentSchema })
+                });
+
+                // 2. Publish as current
+                const publishResponse = await fetch(`/api/forms/${FORM_ID}/versions/${currentDraftId}/publish`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ setAsCurrent: true })
+                });
+
+                if (!publishResponse.ok) throw new Error("Failed to activate form.");
+
+                const publishedVersion = await publishResponse.json();
+                baseVersion = publishedVersion.versionString;
+                currentDraftId = ''; // Published! No longer a draft
+                isSubmitted = false;
+                liveSchema = JSON.parse(JSON.stringify(publishedVersion.schemaJson));
+                
+                document.getElementById('versionBadge').textContent = `v${baseVersion}`;
+                showToast(`Form successfully activated to MRs as v${baseVersion}!`);
+                updateButtonStates();
+                
+                bootstrap.Modal.getInstance(document.getElementById('activateModal')).hide();
+            } catch (error) {
+                console.error(error);
+                showToast(error.message, 'danger');
+            } finally {
+                const btn = document.getElementById('btnConfirmActivate');
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-play me-1"></i> Confirm & Activate`;
+            }
+        });
+        
+        // Type selector toggle options panel (edit form)
+        document.getElementById('q_type').addEventListener('change', (e) => {
+            const wrapper = document.getElementById('optionsContainerWrapper');
+            if (OPTION_TYPES.includes(e.target.value)) {
+                wrapper.classList.remove('d-none');
+            } else {
+                wrapper.classList.add('d-none');
+            }
+        });
+        
+        // New Question Type selector toggle (add modal)
+        document.getElementById('new_q_type').addEventListener('change', (e) => {
+            const wrapper = document.getElementById('newQOptionsWrapper');
+            if (OPTION_TYPES.includes(e.target.value)) {
+                wrapper.classList.remove('d-none');
+                if (document.getElementById('newQOptionsList').children.length === 0) {
+                    addNewQOptionRow('', '');
+                }
+            } else {
+                wrapper.classList.add('d-none');
+            }
+        });
+        
+        // Add option in new question modal
+        document.getElementById('btnAddNewQOption').addEventListener('click', () => addNewQOptionRow('', ''));
+        
+        // Apply New Question to Layout
+        document.getElementById('btnSubmitNewQuestion').addEventListener('click', applyNewQuestionLocally);
+    });
+
+    function showToast(msg, type="success") {
+        const toastEl = document.getElementById('liveToast');
+        const toastMsg = document.getElementById('toastMessage');
+        toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+        toastMsg.textContent = msg;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+    
+    function markUnsaved() {
+        hasUnsavedChanges = true;
+        document.getElementById('pendingBadge').classList.add('show');
+    }
+    
+    function updateButtonStates() {
+        const btnSubmit = document.getElementById('btnSubmitForm');
+        const btnActivate = document.getElementById('btnActivateForm');
+        
+        if (currentDraftId) {
+            if (isSubmitted) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = `<i class="fas fa-check me-1"></i> Submitted`;
+                btnSubmit.classList.replace('btn-outline-primary', 'btn-success');
+                btnActivate.disabled = false;
+            } else {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="fas fa-paper-plane me-1"></i> Submit Form`;
+                btnSubmit.classList.replace('btn-success', 'btn-outline-primary');
+                btnActivate.disabled = true;
+            }
+        } else {
+            // No draft, live version active
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i class="fas fa-paper-plane me-1"></i> Submit Form`;
+            btnActivate.disabled = true;
+        }
+    }
+
+    function generateSchemaDiff() {
+        if (!liveSchema) return "No previous live version found. This will be the first active version.";
+        let diffHtml = "";
+        
+        const liveSecMap = {};
+        if (liveSchema.sections) {
+            liveSchema.sections.forEach(s => liveSecMap[s.id] = s);
+        }
+        const currentSecMap = {};
+        if (currentSchema.sections) {
+            currentSchema.sections.forEach(s => currentSecMap[s.id] = s);
+        }
+
+        const liveQMap = {};
+        if (liveSchema.questions) {
+            liveSchema.questions.forEach(q => liveQMap[q.id] = q);
+        }
+        const currentQMap = {};
+        if (currentSchema.questions) {
+            currentSchema.questions.forEach(q => currentQMap[q.id] = q);
+        }
+        
+        // Map questions to their section ID
+        const qToLiveSec = {};
+        if (liveSchema.sections) {
+            liveSchema.sections.forEach(s => {
+                if (s.questions) s.questions.forEach(qid => qToLiveSec[qid] = s.id);
+            });
+        }
+        
+        const qToCurrentSec = {};
+        if (currentSchema.sections) {
+            currentSchema.sections.forEach(s => {
+                if (s.questions) s.questions.forEach(qid => qToCurrentSec[qid] = s.id);
+            });
+        }
+        
+        // Let's build a hierarchy: Section ID -> { title, changes: [] }
+        const sectionChanges = {};
+        
+        // Helper to get section
+        function getSectionChanges(secId) {
+            if (!sectionChanges[secId]) {
+                const s = currentSecMap[secId] || liveSecMap[secId] || { title: "Unassigned Questions", order: 9999 };
+                sectionChanges[secId] = { title: s.title, changes: [], order: s.order || 9999 };
+            }
+            return sectionChanges[secId];
+        }
+
+        // 0. Check section reordering
+        let sectionReorderChanges = [];
+        if (currentSchema.sections && liveSchema.sections) {
+            const oldFiltered = liveSchema.sections.map(s => s.id).filter(id => currentSecMap[id]);
+            const newFiltered = currentSchema.sections.map(s => s.id).filter(id => liveSecMap[id]);
+            
+            if (oldFiltered.length > 1 && JSON.stringify(oldFiltered) !== JSON.stringify(newFiltered)) {
+                newFiltered.forEach((secId, newIndex) => {
+                    const oldIndex = oldFiltered.indexOf(secId);
+                    if (oldIndex !== -1 && oldIndex !== newIndex) {
+                        const sTitle = currentSecMap[secId] ? currentSecMap[secId].title : secId;
+                        sectionReorderChanges.push(`<li><strong>${sTitle}</strong> moved: Pos ${oldIndex + 1} &rarr; <span class="text-primary fw-bold">Pos ${newIndex + 1}</span></li>`);
+                    }
+                });
+            }
+        }
+
+        // 1. Check sections added/removed
+        if (currentSchema.sections) {
+            currentSchema.sections.forEach(s => {
+                if (!liveSecMap[s.id]) {
+                    getSectionChanges(s.id).changes.push(`<div class="mb-2 text-success fw-bold"><i class="fas fa-folder-plus me-1"></i> Added Section: ${s.title}</div>`);
+                } else if (liveSecMap[s.id].title !== s.title) {
+                    getSectionChanges(s.id).changes.push(`<div class="mb-2 text-warning fw-bold"><i class="fas fa-edit me-1"></i> Renamed Section: <del>${liveSecMap[s.id].title}</del> &rarr; ${s.title}</div>`);
+                }
+            });
+        }
+        if (liveSchema.sections) {
+            liveSchema.sections.forEach(s => {
+                if (!currentSecMap[s.id]) {
+                    getSectionChanges(s.id).changes.push(`<div class="mb-2 text-danger fw-bold"><i class="fas fa-folder-minus me-1"></i> Removed Section: <del>${s.title}</del></div>`);
+                }
+            });
+        }
+
+        // 2. Check questions added/modified
+        if (currentSchema.questions) {
+            currentSchema.questions.forEach(q => {
+                const oldQ = liveQMap[q.id];
+                const secId = qToCurrentSec[q.id] || qToLiveSec[q.id] || 'unassigned';
+                
+                if (!oldQ) {
+                    getSectionChanges(secId).changes.push(`<div class="mb-2 ms-3 text-success"><i class="fas fa-plus me-1"></i> Added Question: <strong>${q.label}</strong> <span class="text-muted small">(ID: ${q.id}, Type: ${q.type})</span></div>`);
+                } else {
+                    // Check if moved sections
+                    const oldSec = qToLiveSec[q.id];
+                    const newSec = qToCurrentSec[q.id];
+                    if (oldSec && newSec && oldSec !== newSec) {
+                        const oldSecTitle = liveSecMap[oldSec] ? liveSecMap[oldSec].title : 'Another Section';
+                        const newSecTitle = currentSecMap[newSec] ? currentSecMap[newSec].title : 'New Section';
+                        const newPos = currentSecMap[newSec].questions.indexOf(q.id) + 1;
+                        getSectionChanges(newSec).changes.push(`<div class="mb-2 ms-3 text-secondary"><i class="fas fa-exchange-alt me-1"></i> Moved question <strong>${q.label}</strong> <span class="text-muted small">(ID: ${q.id})</span> from <strong>${oldSecTitle}</strong> &rarr; <strong>${newSecTitle} (Pos ${newPos})</strong></div>`);
+                    }
+                    
+                    let beforeDetails = [];
+                    let afterDetails = [];
+                    if (oldQ.label !== q.label) {
+                        beforeDetails.push(`Label: <span class="text-secondary">${oldQ.label}</span>`);
+                        afterDetails.push(`Label: <span class="text-dark fw-medium">${q.label}</span>`);
+                    }
+                    if (oldQ.type !== q.type) {
+                        beforeDetails.push(`Type: <span class="text-secondary">${oldQ.type}</span>`);
+                        afterDetails.push(`Type: <span class="text-dark fw-medium">${q.type}</span>`);
+                    }
+                    if (!!oldQ.required !== !!q.required) {
+                        beforeDetails.push(`Required: <span class="text-secondary">${!!oldQ.required}</span>`);
+                        afterDetails.push(`Required: <span class="text-dark fw-medium">${!!q.required}</span>`);
+                    }
+                    if ((oldQ.placeholder || '') !== (q.placeholder || '')) {
+                        beforeDetails.push(`Placeholder: <span class="text-secondary">${oldQ.placeholder || '<i>(none)</i>'}</span>`);
+                        afterDetails.push(`Placeholder: <span class="text-dark fw-medium">${q.placeholder || '<i>(none)</i>'}</span>`);
+                    }
+                    if ((oldQ.helpText || '') !== (q.helpText || '')) {
+                        beforeDetails.push(`Help Text: <span class="text-secondary">${oldQ.helpText || '<i>(none)</i>'}</span>`);
+                        afterDetails.push(`Help Text: <span class="text-dark fw-medium">${q.helpText || '<i>(none)</i>'}</span>`);
+                    }
+                    if (JSON.stringify(oldQ.options) !== JSON.stringify(q.options)) {
+                        beforeDetails.push(`Options were modified`);
+                        afterDetails.push(`Options were modified`);
+                    }
+                    
+                    if (beforeDetails.length > 0) {
+                        getSectionChanges(secId).changes.push(`
+                            <div class="mb-3 ms-3">
+                                <div class="text-secondary mb-1"><i class="fas fa-edit me-1"></i> Modified Question: <strong>${oldQ.label}</strong> <span class="text-muted small">(ID: ${oldQ.id})</span></div>
+                                <div class="row g-0 border rounded overflow-hidden">
+                                    <div class="col-6 p-2 bg-light border-end">
+                                        <div class="small text-uppercase text-muted fw-bold mb-1">Before</div>
+                                        <ul class="mb-0 ps-3"><li>${beforeDetails.join("</li><li>")}</li></ul>
+                                    </div>
+                                    <div class="col-6 p-2 bg-white">
+                                        <div class="small text-uppercase text-muted fw-bold mb-1">After</div>
+                                        <ul class="mb-0 ps-3"><li>${afterDetails.join("</li><li>")}</li></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    }
+                }
+            });
+        }
+        
+        // 3. Check questions deleted
+        if (liveSchema.questions) {
+            liveSchema.questions.forEach(oldQ => {
+                if (!currentQMap[oldQ.id]) {
+                    const secId = qToLiveSec[oldQ.id] || 'unassigned';
+                    getSectionChanges(secId).changes.push(`<div class="mb-2 ms-3 text-danger"><i class="fas fa-trash me-1"></i> Removed Question: <del>${oldQ.label}</del> <span class="text-muted small">(ID: ${oldQ.id})</span></div>`);
+                }
+            });
+        }
+        
+        // 4. Check questions reordered within sections
+        if (currentSchema.sections && liveSchema.sections) {
+            currentSchema.sections.forEach(newS => {
+                const oldS = liveSecMap[newS.id];
+                if (oldS && oldS.questions && newS.questions) {
+                    // Compare order of questions that exist in both the old and new section arrays
+                    const oldFiltered = oldS.questions.filter(id => currentQMap[id] && qToCurrentSec[id] === newS.id);
+                    const newFiltered = newS.questions.filter(id => liveQMap[id] && qToLiveSec[id] === newS.id);
+                    
+                    if (oldFiltered.length > 1 && JSON.stringify(oldFiltered) !== JSON.stringify(newFiltered)) {
+                        const changedQs = [];
+                        newFiltered.forEach((qId, newIndex) => {
+                            const oldIndex = oldFiltered.indexOf(qId);
+                            if (oldIndex !== -1 && oldIndex !== newIndex) {
+                                const qLabel = currentQMap[qId] ? currentQMap[qId].label : 'Unknown Question';
+                                changedQs.push(`<li><strong>${qLabel}</strong> <span class="text-muted small">(ID: ${qId})</span> moved: Pos ${oldIndex + 1} &rarr; <span class="text-primary fw-bold">Pos ${newIndex + 1}</span></li>`);
+                            }
+                        });
+                        
+                        if (changedQs.length > 0) {
+                            getSectionChanges(newS.id).changes.push(`
+                                <div class="mb-2 ms-3 text-secondary">
+                                    <div class="mb-1"><i class="fas fa-sort me-1"></i> <strong>Reordered Questions:</strong></div>
+                                    <ul class="mb-0 ps-4 small" style="list-style-type: circle;">
+                                        ${changedQs.join("")}
+                                    </ul>
+                                </div>
+                            `);
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Render
+        let hasChanges = false;
+        
+        if (sectionReorderChanges.length > 0) {
+            hasChanges = true;
+            diffHtml += `<div class="mb-4 border border-light rounded p-3 bg-white shadow-sm">
+                <h6 class="text-primary text-uppercase fw-bold border-bottom pb-2 mb-3"><i class="fas fa-layer-group me-2"></i>Form Structure Changes</h6>
+                <div class="mb-2 ms-3 text-secondary">
+                    <div class="mb-1"><i class="fas fa-sort me-1"></i> <strong>Reordered Sections:</strong></div>
+                    <ul class="mb-0 ps-4 small" style="list-style-type: circle;">
+                        ${sectionReorderChanges.join("")}
+                    </ul>
+                </div>
+            </div>`;
+        }
+        const sortedSecs = Object.values(sectionChanges).sort((a, b) => a.order - b.order);
+        sortedSecs.forEach(sec => {
+            if (sec.changes.length > 0) {
+                hasChanges = true;
+                diffHtml += `<div class="mb-4 border border-light rounded p-3 bg-white shadow-sm">
+                    <h6 class="text-primary text-uppercase fw-bold border-bottom pb-2 mb-3"><i class="fas fa-layer-group me-2"></i>${sec.title}</h6>
+                    ${sec.changes.join("")}
+                </div>`;
+            }
+        });
+        
+        if (!hasChanges) return "<div class='text-muted'><i class='fas fa-check-circle me-1'></i> No structural changes detected.</div>";
+        return diffHtml;
+    }
+
+    function clearUnsaved() {
+        hasUnsavedChanges = false;
+        document.getElementById('pendingBadge').classList.remove('show');
+    }
+    
+    async function saveDraftToDatabase() {
+        const btnBadge = document.getElementById('pendingBadge');
+        btnBadge.textContent = "Saving...";
+        btnBadge.className = "pending-badge show bg-warning";
+
+        try {
+            if (!currentDraftId) {
+                // Create brand new draft version
+                const payload = {
+                    versionString: baseVersion + " (Draft)",
+                    schemaJson: currentSchema,
+                    changelog: "Auto-saved draft"
+                };
+                const res = await fetch(`/api/forms/${FORM_ID}/versions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Failed to auto-save draft");
+                const data = await res.json();
+                currentDraftId = data.id;
+            } else {
+                // Update existing draft's schema
+                const payload = { schemaJson: currentSchema };
+                const res = await fetch(`/api/forms/${FORM_ID}/versions/${currentDraftId}/schema`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error("Failed to update draft");
+            }
+            btnBadge.textContent = "Draft Saved";
+            btnBadge.className = "pending-badge show bg-success";
+            setTimeout(() => { btnBadge.classList.remove('show'); }, 2000);
+            hasUnsavedChanges = false;
+            isSubmitted = false; // Modifying form resets submit status
+            updateButtonStates();
+        } catch (error) {
+            console.error(error);
+            showToast("Draft Auto-Save Failed!", "danger");
+            btnBadge.textContent = "Save Failed";
+            btnBadge.className = "pending-badge show bg-danger";
+        }
+    }
+
+    async function loadForm() {
+        try {
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('sectionsContainer').innerHTML = '';
+
+            // 1. Fetch form info
+            const formResponse = await fetch(`/api/forms/${FORM_ID}`);
+            if (!formResponse.ok) throw new Error("Failed to load form metadata");
+            
+            const form = await formResponse.json();
+            document.getElementById('formNameTitle').textContent = form.name;
+            
+            const liveVersion = form.versions?.find(v => v.isCurrent);
+            if (liveVersion) {
+                liveSchema = JSON.parse(JSON.stringify(liveVersion.schemaJson));
+            }
+
+            // 2. Determine which version to load
+            let versionToLoad;
+            if (currentDraftId) {
+                // If there's an active draft, we must fetch it directly (the form endpoint only returns current)
+                const draftResponse = await fetch(`/api/forms/${FORM_ID}/versions/${currentDraftId}`);
+                if (!draftResponse.ok) throw new Error("Failed to load draft version");
+                versionToLoad = await draftResponse.json();
+                isSubmitted = versionToLoad.isPublished;
+            } else {
+                // Otherwise use the current published version
+                versionToLoad = liveVersion;
+                isSubmitted = false;
+            }
+            
+            if (!versionToLoad) throw new Error("No valid version found to load");
+            
+            currentSchema = JSON.parse(JSON.stringify(versionToLoad.schemaJson)); // deep copy
+            baseVersion = versionToLoad.versionString || (liveVersion ? liveVersion.versionString : "1.0");
+            
+            document.getElementById('versionBadge').textContent = `v${baseVersion}`;
+            
+            clearUnsaved();
+            updateButtonStates();
+            renderStructure();
+            document.getElementById('loadingSpinner').classList.add('d-none');
+            
+        } catch (error) {
+            console.error(error);
+            alert("Error loading form structure.");
+        }
+    }
+
+    function renderStructure() {
+        const container = document.getElementById('sectionsContainer');
+        container.innerHTML = '';
+        
+        if (!currentSchema || !currentSchema.sections) return;
+        
+        currentSchema.sections.forEach(section => {
+            const sectionDiv = document.createElement('div');
+            sectionDiv.className = 'section-card';
+            
+            const header = document.createElement('div');
+            header.className = 'section-header';
+            header.innerHTML = `
+                <span>${section.title} <small class="text-muted">${section.id}</small></span>
+                <button class="btn btn-sm btn-outline-primary" onclick="openAddQuestionModal('${section.id}')" title="Add question to this section">
+                    <i class="fas fa-plus"></i>
+                </button>
+            `;
+            
+            const qList = document.createElement('div');
+            qList.className = 'question-list';
+            qList.dataset.sectionId = section.id;
+            
+            // Render questions in this section
+            const sectionQuestionIds = section.questions || [];
+                
+            sectionQuestionIds.forEach(qId => {
+                const q = currentSchema.questions.find(x => x.id === qId);
+                if (!q) return;
+                
+                const qItem = document.createElement('div');
+                qItem.className = `question-item ${selectedQuestionId === q.id ? 'active' : ''}`;
+                qItem.dataset.id = q.id;
+                qItem.innerHTML = `
+                    <div class="text-truncate" style="max-width: 85%;">
+                        <i class="fas fa-grip-vertical text-muted me-2 cursor-grab"></i>
+                        ${q.label}
+                    </div>
+                    <span class="badge bg-light text-dark border">${q.type}</span>
+                `;
+                qItem.addEventListener('click', () => selectQuestion(q.id));
+                qList.appendChild(qItem);
+            });
+            
+            sectionDiv.appendChild(header);
+            sectionDiv.appendChild(qList);
+            container.appendChild(sectionDiv);
+            
+            // Initialize Sortable — drag-drop purely updates local schema
+            new Sortable(qList, {
+                group: 'shared',
+                animation: 150,
+                onEnd: function (evt) {
+                    // Update schema section arrays internally based on DOM
+                    const sectionCards = document.querySelectorAll('.question-list');
+                    sectionCards.forEach(list => {
+                        const secId = list.dataset.sectionId;
+                        const orderedIds = Array.from(list.children).map(child => child.dataset.id);
+                        
+                        const sectionObj = currentSchema.sections.find(s => s.id === secId);
+                        if (sectionObj) {
+                            sectionObj.questions = orderedIds;
+                        }
+                    });
+                    
+                    saveDraftToDatabase();
+                },
+            });
+        });
+    }
+
+    // --- Local Operations ---
+
+    function selectQuestion(questionId) {
+        selectedQuestionId = questionId;
+        
+        // Update active class
+        document.querySelectorAll('.question-item').forEach(el => el.classList.remove('active'));
+        const activeItem = document.querySelector(`.question-item[data-id="${questionId}"]`);
+        if (activeItem) activeItem.classList.add('active');
+        
+        const q = currentSchema.questions.find(x => x.id === questionId);
+        if (!q) return;
+        
+        document.getElementById('noSelectionMsg').classList.add('d-none');
+        document.getElementById('configForm').classList.remove('d-none');
+        
+        // Populate fields
+        document.getElementById('q_id').value = q.id;
+        document.getElementById('q_id_display').value = q.id;
+        document.getElementById('q_label').value = q.label || '';
+        document.getElementById('q_type').value = q.type || 'text';
+        document.getElementById('q_required').checked = !!q.required;
+        document.getElementById('q_placeholder').value = q.placeholder || '';
+        document.getElementById('q_helpText').value = q.helpText || '';
+        
+        // Options wrapper
+        const optsWrapper = document.getElementById('optionsContainerWrapper');
+        const optsList = document.getElementById('optionsList');
+        optsList.innerHTML = '';
+        
+        if (OPTION_TYPES.includes(q.type)) {
+            optsWrapper.classList.remove('d-none');
+            if (q.options && q.options.length > 0) {
+                q.options.forEach(opt => addOptionRow(opt.label, opt.value));
+            } else {
+                addOptionRow('', '');
+            }
+        } else {
+            optsWrapper.classList.add('d-none');
+        }
+    }
+
+    function applyQuestionDetailsLocally() {
+        if (!selectedQuestionId) return;
+        
+        const type = document.getElementById('q_type').value;
+        const q = currentSchema.questions.find(x => x.id === selectedQuestionId);
+        if (!q) return;
+
+        q.label = document.getElementById('q_label').value;
+        q.type = type;
+        q.required = document.getElementById('q_required').checked;
+        q.placeholder = document.getElementById('q_placeholder').value;
+        q.helpText = document.getElementById('q_helpText').value;
+        
+        if (OPTION_TYPES.includes(type)) {
+            const opts = [];
+            document.querySelectorAll('.option-row').forEach(row => {
+                const label = row.querySelector('.opt-label').value.trim();
+                const value = row.querySelector('.opt-val').value.trim();
+                if (label && value) opts.push({ label, value });
+            });
+            q.options = opts;
+            
+            if (opts.length === 0) {
+                showToast("Please add at least one option.", "danger");
+                return;
+            }
+        } else {
+            delete q.options; // Clean up options if type changed
+        }
+        
+        renderStructure();
+        saveDraftToDatabase();
+        showToast("Changes auto-saved to draft.", "info");
+    }
+
+    function deleteQuestionLocally() {
+        if (!selectedQuestionId) return;
+        
+        // Remove from questions array
+        currentSchema.questions = currentSchema.questions.filter(q => q.id !== selectedQuestionId);
+        
+        // Remove from sections
+        currentSchema.sections.forEach(section => {
+            if (section.questions) {
+                section.questions = section.questions.filter(id => id !== selectedQuestionId);
+            }
+        });
+        
+        selectedQuestionId = null;
+        document.getElementById('configForm').classList.add('d-none');
+        document.getElementById('noSelectionMsg').classList.remove('d-none');
+        
+        document.getElementById('noSelectionMsg').classList.remove('d-none');
+        
+        renderStructure();
+        saveDraftToDatabase();
+        showToast("Question removed and auto-saved to draft.", "info");
+    }
+
+    function openAddQuestionModal(sectionId) {
+        document.getElementById('new_q_section_id').value = sectionId;
+        document.getElementById('new_q_id').value = '';
+        document.getElementById('new_q_label').value = '';
+        document.getElementById('new_q_type').value = 'text';
+        document.getElementById('new_q_required').checked = false;
+        document.getElementById('new_q_placeholder').value = '';
+        document.getElementById('new_q_helpText').value = '';
+        document.getElementById('newQOptionsList').innerHTML = '';
+        document.getElementById('newQOptionsWrapper').classList.add('d-none');
+        
+        new bootstrap.Modal(document.getElementById('addQuestionModal')).show();
+    }
+    
+    function applyNewQuestionLocally() {
+        const qLabel = document.getElementById('new_q_label').value.trim();
+        const qType = document.getElementById('new_q_type').value;
+        const qRequired = document.getElementById('new_q_required').checked;
+        const sectionId = document.getElementById('new_q_section_id').value;
+        const placeholder = document.getElementById('new_q_placeholder').value.trim();
+        const helpText = document.getElementById('new_q_helpText').value.trim();
+        
+        if (!qLabel) {
+            showToast("Question Label is required.", "danger");
+            return;
+        }
+
+        const section = currentSchema.sections.find(s => s.id === sectionId);
+        if (!section) {
+            showToast("Invalid section selected.", "danger");
+            return;
+        }
+
+        // Auto-generate Question ID based on section and a persistent counter
+        let secNumStr = sectionId.replace('section_', '');
+        let prefix = `q${secNumStr}_`;
+        
+        // Initialize the persistent counter if it doesn't exist
+        if (typeof section.nextQIndex === 'undefined') {
+            let highestNum = 0;
+            currentSchema.questions.forEach(q => {
+                if (q.id && q.id.startsWith(prefix)) {
+                    let numStr = q.id.substring(prefix.length);
+                    let num = parseInt(numStr, 10);
+                    if (!isNaN(num) && num > highestNum) {
+                        highestNum = num;
+                    }
+                }
+            });
+            section.nextQIndex = highestNum + 1;
+        }
+        
+        const qId = `${prefix}${section.nextQIndex}`;
+        section.nextQIndex++; // Increment for the next question added
+        
+        document.getElementById('new_q_id').value = qId; // Keep hidden input synced
+        
+        const newQ = {
+            id: qId,
+            label: qLabel,
+            type: qType,
+            required: qRequired,
+        };
+        if (placeholder) newQ.placeholder = placeholder;
+        if (helpText) newQ.helpText = helpText;
+        
+        if (OPTION_TYPES.includes(qType)) {
+            const opts = [];
+            document.querySelectorAll('.new-option-row').forEach(row => {
+                const label = row.querySelector('.new-opt-label').value.trim();
+                const value = row.querySelector('.new-opt-val').value.trim();
+                if (label && value) opts.push({ label, value });
+            });
+            if (opts.length === 0) {
+                showToast(`Question type '${qType}' requires at least one option.`, "danger");
+                return;
+            }
+            newQ.options = opts;
+        }
+
+        // Apply locally
+        currentSchema.questions.push(newQ);
+        
+        section.questions = section.questions || [];
+        section.questions.push(qId);
+        
+        bootstrap.Modal.getInstance(document.getElementById('addQuestionModal')).hide();
+        renderStructure();
+        saveDraftToDatabase();
+        showToast(`Question added and auto-saved to draft.`, "info");
+    }
+
+    // --- Helpers ---
+
+    function addOptionRow(label, value) {
+        const div = document.createElement('div');
+        div.className = 'd-flex mb-2 option-row';
+        div.innerHTML = `
+            <input type="text" class="form-control form-control-sm me-2 opt-label" placeholder="Display Label" value="${label.replace(/"/g, '&quot;')}">
+            <input type="text" class="form-control form-control-sm me-2 opt-val" placeholder="System Value" value="${value.replace(/"/g, '&quot;')}">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        document.getElementById('optionsList').appendChild(div);
+    }
+    
+    function addNewQOptionRow(label, value) {
+        const div = document.createElement('div');
+        div.className = 'd-flex mb-2 new-option-row';
+        div.innerHTML = `
+            <input type="text" class="form-control form-control-sm me-2 new-opt-label" placeholder="Display Label" value="${label}">
+            <input type="text" class="form-control form-control-sm me-2 new-opt-val" placeholder="System Value" value="${value}">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        document.getElementById('newQOptionsList').appendChild(div);
+    }
+</script>
+{% endblock %}

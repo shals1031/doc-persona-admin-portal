@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Form Management | Doc Persona Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Form Management</h1>
+</div>
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">All Forms</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover" id="formsTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Current Version</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="formsTableBody">
+                    <!-- Loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Loading spinner -->
+        <div id="loadingSpinner" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        
+        <!-- Error message -->
+        <div id="errorMessage" class="alert alert-danger d-none" role="alert">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        const tbody = document.getElementById("formsTableBody");
+        const spinner = document.getElementById("loadingSpinner");
+        const errorMsg = document.getElementById("errorMessage");
+
+        try {
+            const response = await fetch('/api/forms');
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch forms: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            const forms = result.data || [];
+            
+            spinner.classList.add("d-none");
+            
+            if (forms.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center">No forms found.</td></tr>`;
+                return;
+            }
+            
+            forms.forEach(form => {
+                const tr = document.createElement("tr");
+                const statusBadge = form.isActive 
+                    ? `<span class="badge bg-success">Active</span>`
+                    : `<span class="badge bg-secondary">Inactive</span>`;
+                    
+                const dateStr = new Date(form.createdAt).toLocaleDateString();
+                const versionBadge = form.currentVersion
+                    ? `<span class="badge bg-secondary">v${form.currentVersion}</span>`
+                    : `<span class="badge bg-warning text-dark">No Version</span>`;
+                
+                tr.innerHTML = `
+                    <td><strong>${form.name}</strong></td>
+                    <td>${form.category || '-'}</td>
+                    <td>${versionBadge}</td>
+                    <td>${statusBadge}</td>
+                    <td>${dateStr}</td>
+                    <td>
+                        <a href="/form-management/${form.id}" class="btn btn-sm btn-primary">
+                            <i class="fas fa-edit"></i> Edit Schema
+                        </a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+        } catch (error) {
+            console.error(error);
+            spinner.classList.add("d-none");
+            errorMsg.textContent = "Error loading forms. Please ensure the backend is running.";
+            errorMsg.classList.remove("d-none");
+        }
+    });
+</script>
+{% endblock %}
