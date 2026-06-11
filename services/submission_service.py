@@ -29,79 +29,8 @@ class SubmissionService:
                 # Create a mapping of question ID to label/data
                 q_map = {q["id"]: q for q in schema["questions"]}
                 
-                # Section mapping provided in the requirement
-                sections_config = [
-                    {
-                        "id": "section_1",
-                        "title": "SECTION 1: MR IDENTIFICATION",
-                        "description": "Please provide your details and the date of this profiling interaction.",
-                        "order": 1,
-                        "questions": ["q1_1", "q1_2", "q1_3"]
-                    },
-                    {
-                        "id": "section_2",
-                        "title": "SECTION 2: DOCTOR IDENTIFICATION",
-                        "description": "Enter the doctor's basic information. Use the name as it appears on their clinic board.",
-                        "order": 2,
-                        "questions": ["q2_1", "q1_4", "q2_2", "q2_10", "q2_3", "q2_4", "q2_5", "q2_8", "q2_9", "q2_6", "q2_7"]
-                    },
-                    {
-                        "id": "section_3",
-                        "title": "SECTION 3: PRACTICE PROFILE & BUSINESS POTENTIAL",
-                        "description": "Assess the doctor's practice size and business potential. Base your answers on what you have observed during visits.",
-                        "order": 3,
-                        "questions": ["q3_1", "q3_4", "q3_5", "q3_6"]
-                    },
-                    {
-                        "id": "section_4",
-                        "title": "SECTION 4: GENERAL PRESCRIBING BEHAVIOR",
-                        "description": "Understand how the doctor prescribes medicines in general.",
-                        "order": 4,
-                        "questions": ["q4_3", "q4_4", "q4_5"]
-                    },
-                    {
-                        "id": "section_5",
-                        "title": "SECTION 5: TREATMENT APPROACH",
-                        "description": "Understand how this doctor thinks about treatment decisions.",
-                        "order": 5,
-                        "questions": ["q5_1", "q5_2"]
-                    },
-                    {
-                        "id": "section_6",
-                        "title": "SECTION 6: ENGAGEMENT PREFERENCES",
-                        "description": "Understand how this doctor prefers to receive information and interact with pharma companies.",
-                        "order": 6,
-                        "questions": ["q6_1", "q6_2", "q6_3", "q6_4", "q6_5", "q6_6", "q6_7"]
-                    },
-                    {
-                        "id": "section_7",
-                        "title": "SECTION 7: RELATIONSHIP & COMPETITIVE INFORMATION",
-                        "description": "Overall perception and competitive landscape.",
-                        "order": 7,
-                        "questions": ["q7_1", "q7_2", "q7_2_other", "q7_3", "q7_3_other"]
-                    },
-                    {
-                        "id": "section_8",
-                        "title": "SECTION 8: YOUR OVERALL ASSESSMENT",
-                        "description": "Based on your interaction, provide your overall assessment of this doctor.",
-                        "order": 8,
-                        "questions": ["q8_1", "q8_2", "q8_4"]
-                    },
-                    {
-                        "id": "section_9",
-                        "title": "SECTION 9: NVM-LC BRAND MODULE",
-                        "description": "About NVM-LC: Folic Acid + Levo-carnitine + Methylcobalamin + Vitamin E",
-                        "order": 9,
-                        "questions": ["q9_1", "q9_2", "q9_4", "q9_4_other", "q9_5", "q9_7", "q9_8", "q9_9", "q9_10"]
-                    },
-                    {
-                        "id": "section_10",
-                        "title": "SECTION 10: COMIG BRAND MODULE",
-                        "description": "About Comig: Naproxen Sodium 250/500mg + Domperidone 10mg for migraine treatment",
-                        "order": 10,
-                        "questions": ["q10_1", "q10_1_other", "q10_2", "q10_3", "q10_4", "q10_5", "q10_5_other", "q10_7", "q10_9", "q10_10", "q10_11", "q10_12"]
-                    }
-                ]
+                # Dynamically load the sections from the submitted form's schema
+                sections_config = sorted(schema.get("sections", []), key=lambda x: x.get("order", 0))
 
                 # Process by section
                 for sec in sections_config:
