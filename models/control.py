@@ -13,7 +13,7 @@ _schema = settings.database_schema
 
 class Tenant(Base):
     __tablename__ = "tenants"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "core"}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=True)

@@ -25,14 +25,14 @@ class SubmissionRepository:
 
     async def get_raw_submission(self, submission_id: uuid.UUID):
         result = await self.db.execute(
-            text("SELECT submission_data, form_version_id FROM public.submissions WHERE id = :id"),
+            text("SELECT submission_data, form_version_id FROM core.submissions WHERE id = :id"),
             {"id": submission_id}
         )
         return result.fetchone()
 
     async def get_form_schema(self, form_version_id: uuid.UUID):
         result = await self.db.execute(
-            text("SELECT schema_json FROM public.form_versions WHERE id = :id"),
+            text("SELECT schema_json FROM core.form_versions WHERE id = :id"),
             {"id": form_version_id}
         )
         return result.scalar_one_or_none()

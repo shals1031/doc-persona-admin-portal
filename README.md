@@ -98,7 +98,7 @@ Edit the `.env` file and set the following variables with your actual values:
 | `DATABASE_USER` | Database username | *(set your own)* |
 | `DATABASE_PASSWORD` | Database password | *(set your own)* |
 | `DATABASE_NAME` | Database name | `doc_persona` |
-| `DATABASE_SCHEMA` | PostgreSQL schema | `admin_portal_ai` |
+| `DATABASE_SCHEMA` | PostgreSQL schema for AI tables | `ai` |
 | `REDIS_URL` | Redis connection URL | `redis://localhost:6379/0` |
 | `JWT_SECRET` | Secret key for JWT token signing | *(set a strong secret)* |
 | `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |

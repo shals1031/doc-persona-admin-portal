@@ -5,6 +5,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.dashboard import DashboardFact
+from core.config import settings
 from schemas.dashboard import DashboardFilters
 
 
@@ -79,13 +80,14 @@ class DashboardRepository:
         return result.scalars().all()
 
     async def refresh_aggregates(self) -> None:
+        schema = settings.database_schema
         await self.db.execute(
-            text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_fact")
+            text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {schema}.dashboard_fact")
         )
         await self.db.execute(
-            text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.doctor_profile_flat_table")
+            text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {schema}.doctor_profile_flat_table")
         )
         await self.db.execute(
-            text("REFRESH MATERIALIZED VIEW CONCURRENTLY admin_portal_ai.dashboard_aggregates")
+            text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {schema}.dashboard_aggregates")
         )
         await self.db.commit()

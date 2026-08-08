@@ -14,7 +14,7 @@ _schema = settings.database_schema
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "core"}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
@@ -29,7 +29,7 @@ class User(Base):
 
 class Doctor(Base):
     __tablename__ = "doctors"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "core"}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -42,7 +42,7 @@ class Doctor(Base):
 
 class MRDoctorMapping(Base):
     __tablename__ = "mr_doctor_mapping"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "core"}
 
     doctor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     mr_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)

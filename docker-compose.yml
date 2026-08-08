@@ -28,7 +28,7 @@ services:
       DATABASE_USER: admin_user_doc
       DATABASE_PASSWORD: admin_user_doc
       DATABASE_NAME: doc_persona
-      DATABASE_SCHEMA: admin_portal_ai
+      DATABASE_SCHEMA: ai
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: admin-portal-jwt-secret-change-in-production
       JWT_ALGORITHM: HS256
@@ -53,7 +53,7 @@ services:
       DATABASE_USER: admin_user_doc
       DATABASE_PASSWORD: admin_user_doc
       DATABASE_NAME: doc_persona
-      DATABASE_SCHEMA: admin_portal_ai
+      DATABASE_SCHEMA: ai
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: admin-portal-jwt-secret-change-in-production
       JWT_ALGORITHM: HS256
@@ -79,7 +79,7 @@ services:
       DATABASE_USER: admin_user_doc
       DATABASE_PASSWORD: admin_user_doc
       DATABASE_NAME: doc_persona
-      DATABASE_SCHEMA: admin_portal_ai
+      DATABASE_SCHEMA: ai
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: admin-portal-jwt-secret-change-in-production
       JWT_ALGORITHM: HS256

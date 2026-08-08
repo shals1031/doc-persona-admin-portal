@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     database_user: str = "admin_user_doc"
     database_password: str = "admin_user_doc"
     database_name: str = "doc_persona"
-    database_schema: str = "admin_portal_ai"
+    database_schema: str = "ai"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
