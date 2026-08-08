@@ -87,6 +87,12 @@
                 <li class="{% if request.url.path == '/doctor-mr-mapping' %}active{% endif %}">
                     <a href="/doctor-mr-mapping"><i class="fas fa-user-md me-2"></i> Doctor MR Mapping</a>
                 </li>
+                
+                {% if ctx.role == 'SYSTEM_ADMIN' %}
+                <li class="{% if request.url.path.startswith('/form-management') %}active{% endif %}">
+                    <a href="/form-management"><i class="fas fa-list-alt me-2"></i> Form Management</a>
+                </li>
+                {% endif %}
                 <!-- Future menu items will be added here -->
             </ul>
 

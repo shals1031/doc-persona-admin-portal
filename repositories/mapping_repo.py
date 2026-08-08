@@ -171,11 +171,12 @@ async def update_mapping_mr(
     )
     db.add(new_mapping)
 
-    # Transfer ownership of past submissions to the new MR
+    # Transfer ownership of past submissions to the new MR (excluding Approved forms)
     await db.execute(
         update(Submission)
         .where(Submission.doctor_id == doc_id)
         .where(Submission.tenant_id == t_id)
+        .where(func.lower(Submission.status) != 'approved')
         .values(submitted_by=mr_uuid)
     )
 
@@ -220,11 +221,12 @@ async def bulk_update_mapping_mr(
     ]
     db.add_all(new_mappings)
 
-    # 3. Bulk transfer ownership of past submissions to the new MR
+    # 3. Bulk transfer ownership of past submissions to the new MR (excluding Approved forms)
     await db.execute(
         update(Submission)
         .where(Submission.doctor_id.in_(doc_uuids))
         .where(Submission.tenant_id == t_id)
+        .where(func.lower(Submission.status) != 'approved')
         .values(submitted_by=mr_uuid)
     )
 
