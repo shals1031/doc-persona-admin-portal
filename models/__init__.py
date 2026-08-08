@@ -2,6 +2,14 @@ from models.doctor import DoctorProfileFlatTable, DoctorAiProfile, DoctorPersona
 from models.dashboard import DashboardFact
 from models.control import Tenant, AiProcessingLog, EmbeddingJob
 from models.form import Form, FormVersion
+from models.ai_engagement import (
+    Persona,
+    Brand,
+    DoctorBrandEngagement,
+    BrandStrategy,
+    CampaignMaterial,
+    DoctorBehavioralProfile,
+)
 
 __all__ = [
     "DoctorProfileFlatTable",
@@ -13,4 +21,10 @@ __all__ = [
     "EmbeddingJob",
     "Form",
     "FormVersion",
+    "Persona",
+    "Brand",
+    "DoctorBrandEngagement",
+    "BrandStrategy",
+    "CampaignMaterial",
+    "DoctorBehavioralProfile",
 ]

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Campaign Materials — Admin Portal{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-dp mb-1"><a href="/dashboard">Dashboard</a> &rsaquo; Campaigns Materials</div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold mb-0">Campaign Materials</h3>
+  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#uploadPanel">
+    <i class="fas fa-upload me-1"></i> Upload Material
+  </button>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold">Total Materials</div>
+      <div class="fs-3 fw-bold">{{ page.summary.total }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase small fw-semibold" style="color:#16a34a;">Ready</div>
+      <div class="fs-3 fw-bold">{{ page.summary.ready }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-primary small fw-semibold">Pushed to MR</div>
+      <div class="fs-3 fw-bold">{{ page.summary.pushed }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold">Recalled</div>
+      <div class="fs-3 fw-bold">{{ page.summary.recalled }}</div>
+    </div></div>
+  </div>
+</div>
+
+<!-- Upload panel (collapsed by default) -->
+<div class="collapse mb-3" id="uploadPanel">
+  <div class="card">
+    <div class="card-body">
+      <h6 class="fw-bold mb-3">Upload New Material</h6>
+      <form method="POST" action="/campaigns/upload" enctype="multipart/form-data" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Brand</label>
+          <select name="brand_name" class="form-select form-select-sm">
+            <option value="">Select brand…</option>
+            {% for b in page.brands %}
+            <option value="{{ b }}">{{ b }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Target Persona</label>
+          <input name="persona_name" class="form-control form-control-sm" placeholder="All Personas">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Material Type</label>
+          <select name="material_type" class="form-select form-select-sm">
+            {% for t in ["Document", "LBL", "Brochure"] %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">File</label>
+          <input type="file" name="file" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1">
+          <button type="submit" class="btn btn-primary btn-sm w-100">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" action="/campaigns" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <select name="brand_name" class="form-select form-select-sm">
+          <option value="">All Brands</option>
+          {% for b in page.brands %}
+          <option value="{{ b }}" {% if page.filters.brand_name == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="material_type" class="form-select form-select-sm">
+          <option value="">All Types</option>
+          {% for t in ["Document", "LBL", "Brochure"] %}
+          <option value="{{ t }}" {% if page.filters.material_type == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          {% for s in ["ready", "pushed", "recalled"] %}
+          <option value="{{ s }}" {% if page.filters.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3 d-flex gap-1">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/campaigns" class="btn btn-link btn-sm text-decoration-none">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Materials table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th class="ps-3">Material</th>
+          <th>Brand</th>
+          <th>Target Persona</th>
+          <th>Type</th>
+          <th>Size</th>
+          <th>Status</th>
+          <th class="text-end pe-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in page.materials %}
+        <tr>
+          <td class="ps-3">
+            <i class="fas fa-file-lines text-primary me-2"></i>
+            <span class="fw-semibold">{{ m.file_name or '—' }}</span>
+          </td>
+          <td>{{ m.brand_name or '—' }}</td>
+          <td>{{ m.persona_name }}</td>
+          <td>{{ m.material_type or '—' }}</td>
+          <td>{{ m.file_size }}</td>
+          <td>
+            <span class="badge rounded-pill bg-{{ m.badge }}-subtle text-{{ m.badge }}">{{ m.status|capitalize }}</span>
+          </td>
+          <td class="text-end pe-3">
+            {% if m.file_url %}
+            <a href="{{ m.file_url }}" class="btn btn-outline-secondary btn-sm" title="Download">
+              <i class="fas fa-download"></i>
+            </a>
+            {% endif %}
+            {% if m.status == 'pushed' %}
+            <form method="POST" action="/campaigns/{{ m.id }}/recall" class="d-inline">
+              <button class="btn btn-outline-danger btn-sm">Recall</button>
+            </form>
+            {% else %}
+            <form method="POST" action="/campaigns/{{ m.id }}/push" class="d-inline">
+              <button class="btn btn-outline-primary btn-sm">Push to MR</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center text-muted py-4">
+            No campaign materials found. Use “Upload Material” to add one.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

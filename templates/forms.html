@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Forms — Admin Portal{% endblock %}
+
+{% block content %}
+<!-- Status Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card summary-card draft h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="text-uppercase text-muted small fw-semibold">Draft</div>
+          <i class="fas fa-file text-muted"></i>
+        </div>
+        <div class="fs-2 fw-bold mt-1">{{ summary.draft }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card summary-card submitted h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="text-uppercase text-primary small fw-semibold">Submitted</div>
+          <i class="fas fa-paper-plane text-primary"></i>
+        </div>
+        <div class="fs-2 fw-bold mt-1">{{ summary.submitted }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card summary-card approved h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="text-uppercase small fw-semibold" style="color:#16a34a;">Approved</div>
+          <i class="fas fa-circle-check" style="color:#16a34a;"></i>
+        </div>
+        <div class="fs-2 fw-bold mt-1">{{ summary.approved }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card summary-card rejected h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="text-uppercase small fw-semibold" style="color:#dc3545;">Rejected</div>
+          <i class="fas fa-circle-xmark" style="color:#dc3545;"></i>
+        </div>
+        <div class="fs-2 fw-bold mt-1">{{ summary.rejected }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Heading + Export -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="fw-bold mb-0">Doctor Profile Submissions</h4>
+  <a href="/api/dashboard/export?{{ 'geography=' ~ (filters.geography or '') }}&{{ 'form_status=' ~ (filters.form_status or '') }}&{{ 'mr_name=' ~ (filters.mr_name or '') }}&{{ 'mr_manager_name=' ~ (filters.mr_manager_name or '') }}&{{ 'doctor_name=' ~ (filters.doctor_name or '') }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="fas fa-download me-1"></i> Export Data
+  </a>
+</div>
+
+<!-- Filter Panel -->
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="GET" action="/forms" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+          <input name="doctor_name" class="form-control"
+                 value="{{ filters.doctor_name or '' }}" placeholder="Search profiles...">
+        </div>
+      </div>
+      <div class="col-md-2">
+        <input name="mr_name" class="form-control form-control-sm"
+               value="{{ filters.mr_name or '' }}" placeholder="MR Name">
+      </div>
+      <div class="col-md-2">
+        <input name="mr_manager_name" class="form-control form-control-sm"
+               value="{{ filters.mr_manager_name or '' }}" placeholder="Manager Name">
+      </div>
+      <div class="col-md-2">
+        <input name="geography" class="form-control form-control-sm"
+               value="{{ filters.geography or '' }}" placeholder="Geography">
+      </div>
+      <div class="col-md-2">
+        <select name="form_status" class="form-select form-select-sm">
+          <option value="">Status</option>
+          {% for s in ["Draft", "Submitted", "Approved", "Rejected"] %}
+          <option value="{{ s }}" {% if filters.form_status == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-1 d-flex gap-1">
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/forms" class="btn btn-link btn-sm text-decoration-none">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Submission Cards -->
+{% set badge = {'Draft': 'secondary', 'Submitted': 'primary', 'Approved': 'success', 'Rejected': 'danger'} %}
+{% for item in listing.items %}
+<div class="card mb-2">
+  <div class="card-body py-3">
+    <div class="row align-items-center g-2">
+      <div class="col-md-3 d-flex align-items-center">
+        <div class="avatar rounded-circle bg-light d-flex align-items-center justify-content-center me-2"
+             style="width:40px;height:40px;">
+          <i class="fas fa-user text-muted"></i>
+        </div>
+        <div>
+          <a href="/submission/{{ item.submission_id }}" class="fw-bold text-primary text-decoration-none">
+            {{ item.doctor_name or '—' }}
+          </a>
+          <div class="text-muted small">{{ item.specialty or '—' }}{% if item.tier %} • {{ item.tier }}{% endif %}</div>
+        </div>
+      </div>
+      <div class="col-md-2">
+        <div class="text-uppercase text-muted" style="font-size:.7rem;">MR Name</div>
+        <div class="small">{{ item.mr_name or '—' }}</div>
+      </div>
+      <div class="col-md-2">
+        <div class="text-uppercase text-muted" style="font-size:.7rem;">Manager</div>
+        <div class="small">{{ item.mr_manager_name or '—' }}</div>
+      </div>
+      <div class="col-md-2">
+        <div class="text-uppercase text-muted" style="font-size:.7rem;">Geography</div>
+        <div class="small">{{ item.geography or '—' }}</div>
+      </div>
+      <div class="col-md-1">
+        <div class="text-uppercase text-muted" style="font-size:.7rem;">Created</div>
+        <div class="small">{{ item.created_at.strftime('%d %b %Y') if item.created_at else '—' }}</div>
+      </div>
+      <div class="col-md-1 text-end d-flex align-items-center justify-content-end gap-2">
+        <span class="badge rounded-pill bg-{{ badge.get(item.form_status, 'secondary') }}-subtle text-{{ badge.get(item.form_status, 'secondary') }}">
+          {{ item.form_status or '—' }}
+        </span>
+      </div>
+      <div class="col-md-auto text-end">
+        <a href="/submission/{{ item.submission_id }}" class="btn btn-outline-primary btn-sm">View</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="card-body text-center text-muted py-4">No records found.</div></div>
+{% endfor %}
+
+<!-- Pagination -->
+{% if listing.total > listing.page_size %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-end">
+    {% set total_pages = (listing.total // listing.page_size) + (1 if listing.total % listing.page_size else 0) %}
+    {% for p in range(1, total_pages + 1) %}
+    <li class="page-item {% if p == listing.page %}active{% endif %}">
+      <a class="page-link" href="?page={{ p }}
+        {%- if filters.mr_name %}&mr_name={{ filters.mr_name }}{% endif %}
+        {%- if filters.mr_manager_name %}&mr_manager_name={{ filters.mr_manager_name }}{% endif %}
+        {%- if filters.geography %}&geography={{ filters.geography }}{% endif %}
+        {%- if filters.doctor_name %}&doctor_name={{ filters.doctor_name }}{% endif %}
+        {%- if filters.form_status %}&form_status={{ filters.form_status }}{% endif %}">
+        {{ p }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

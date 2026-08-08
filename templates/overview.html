@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Admin Portal{% endblock %}
+
+{% block head %}
+<style>
+  .kpi-card .kpi-label { font-size: .72rem; letter-spacing: .04em; }
+  .kpi-card .kpi-value { font-size: 1.9rem; font-weight: 700; }
+  .donut {
+    width: 150px; height: 150px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .donut::after {
+    content: ""; position: absolute; width: 96px; height: 96px;
+    background: #fff; border-radius: 50%;
+  }
+  .donut .donut-center {
+    position: relative; z-index: 2; text-align: center; line-height: 1;
+  }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .pending-source {
+    border: 1px dashed var(--dp-border); border-radius: 10px;
+    color: var(--dp-muted); font-size: .8rem;
+  }
+  .donut-link { cursor: pointer; text-decoration: none; color: inherit; display: inline-block; }
+  .donut-link:hover .donut { box-shadow: 0 0 0 4px var(--dp-primary-soft); }
+  .empty-source {
+    border: 1px dashed var(--dp-border); border-radius: 10px;
+    color: var(--dp-muted); font-size: .8rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-1">Overview</h3>
+    <div class="text-muted">High-level analytics and system status.</div>
+  </div>
+  <div class="d-flex gap-2">
+    <select class="form-select form-select-sm" style="width:150px;">
+      <option>All Regions</option>
+    </select>
+    <select class="form-select form-select-sm" style="width:150px;">
+      <option>All Personas</option>
+    </select>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card h-100"><div class="card-body">
+      <div class="kpi-label text-uppercase text-muted fw-semibold">Total Doctors</div>
+      <div class="kpi-value">{{ "{:,}".format(overview.total_doctors) }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card h-100"><div class="card-body">
+      <div class="kpi-label text-uppercase text-muted fw-semibold">Mapped to MRs</div>
+      <div class="kpi-value" style="color:#16a34a;">{{ "{:,}".format(overview.mapped) }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card h-100"><div class="card-body">
+      <div class="kpi-label text-uppercase text-muted fw-semibold">Unmapped (Needs Map)</div>
+      <div class="kpi-value text-danger">{{ "{:,}".format(overview.unmapped) }}</div>
+    </div></div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card kpi-card h-100"><div class="card-body">
+      <div class="kpi-label text-uppercase text-muted fw-semibold">Profiling Completion</div>
+      <div class="kpi-value">{{ overview.profiling_completion }}%</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Persona Mix -->
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-uppercase text-muted small fw-semibold">Persona Mix</span>
+        <a href="/persona-mix" class="small text-primary text-decoration-none">Strategy &rsaquo;</a>
+      </div>
+      <a href="/persona-mix" class="donut-link d-flex justify-content-center mb-3" title="View Strategy &amp; Analytics">
+        {% set ns = namespace(acc=0, stops="") %}
+        {% set total = overview.persona_total %}
+        {% if total > 0 %}
+          {% for p in overview.persona_mix %}
+            {% if p.count > 0 %}
+              {% set start = (ns.acc / total * 100) %}
+              {% set ns.acc = ns.acc + p.count %}
+              {% set end = (ns.acc / total * 100) %}
+              {% set ns.stops = ns.stops ~ p.color ~ " " ~ start ~ "% " ~ end ~ "%," %}
+            {% endif %}
+          {% endfor %}
+          <div class="donut" style="background: conic-gradient({{ ns.stops[:-1] }});">
+            <div class="donut-center">
+              <div class="fw-bold fs-4">{{ total }}</div>
+              <div class="text-muted" style="font-size:.65rem;">TOTAL</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="donut" style="background: #e6e8ef;">
+            <div class="donut-center"><div class="fw-bold fs-4">0</div>
+            <div class="text-muted" style="font-size:.65rem;">TOTAL</div></div>
+          </div>
+        {% endif %}
+      </a>
+      <ul class="list-unstyled mb-0">
+        {% for p in overview.persona_mix %}
+        <li class="d-flex justify-content-between align-items-center py-1 small">
+          <span><span class="legend-dot me-2" style="background:{{ p.color }};"></span>{{ p.persona }}</span>
+          <span class="fw-semibold">{{ p.count }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div></div>
+  </div>
+
+  <!-- Brand Engagement Status donuts (one per brand) -->
+  {% for brand in overview.brand_status %}
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold mb-3">
+        <span class="legend-dot me-1" style="background:var(--dp-primary);"></span> {{ brand.brand }} Status
+      </div>
+      <div class="d-flex justify-content-center mb-3">
+        {% set bns = namespace(acc=0, stops="") %}
+        {% set btotal = brand.total %}
+        {% if btotal > 0 %}
+          {% for s in brand.statuses %}
+            {% if s.count > 0 %}
+              {% set start = (bns.acc / btotal * 100) %}
+              {% set bns.acc = bns.acc + s.count %}
+              {% set end = (bns.acc / btotal * 100) %}
+              {% set bns.stops = bns.stops ~ s.color ~ " " ~ start ~ "% " ~ end ~ "%," %}
+            {% endif %}
+          {% endfor %}
+          <div class="donut" style="background: conic-gradient({{ bns.stops[:-1] }});">
+            <div class="donut-center">
+              <div class="fw-bold fs-4">{{ btotal }}</div>
+              <div class="text-muted" style="font-size:.65rem;">TOTAL</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="donut" style="background:#e6e8ef;">
+            <div class="donut-center"><div class="fw-bold fs-4">0</div>
+            <div class="text-muted" style="font-size:.65rem;">TOTAL</div></div>
+          </div>
+        {% endif %}
+      </div>
+      {% if brand.statuses %}
+      <ul class="list-unstyled mb-0">
+        {% for s in brand.statuses %}
+        <li class="d-flex justify-content-between align-items-center py-1 small">
+          <span><span class="legend-dot me-2" style="background:{{ s.color }};"></span>{{ s.status }}</span>
+          <span class="fw-semibold">{{ s.count }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-source p-3 text-center">No engagement data yet.</div>
+      {% endif %}
+    </div></div>
+  </div>
+  {% else %}
+  <div class="col-md-8">
+    <div class="card h-100"><div class="card-body">
+      <div class="empty-source p-4 text-center">
+        <i class="fas fa-database mb-2 d-block"></i>
+        No brand-engagement data yet for this tenant.
+      </div>
+    </div></div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,8 +1,9 @@
+import os
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +12,9 @@ from middleware.auth import require_admin, require_auth
 from middleware.tenant import resolve_tenant_id
 from schemas.auth import RequestContext
 from schemas.dashboard import DashboardFilters
+from services.campaign_service import CampaignService
 from services.dashboard_service import DashboardService
+from services.overview_service import OverviewService
 
 router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="templates")
@@ -19,6 +22,24 @@ templates = Jinja2Templates(directory="templates")
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(
+    request: Request,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    overview = await OverviewService(db).get_overview(tenant_id)
+    return templates.TemplateResponse(
+        "overview.html",
+        {
+            "request": request,
+            "ctx": ctx,
+            "overview": overview,
+        },
+    )
+
+
+@router.get("/forms", response_class=HTMLResponse)
+async def forms_page(
     request: Request,
     ctx: Annotated[RequestContext, Depends(require_admin)],
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
@@ -43,7 +64,7 @@ async def dashboard_page(
     listing = await svc.get_list(tenant_id, filters)
 
     return templates.TemplateResponse(
-        "dashboard.html",
+        "forms.html",
         {
             "request": request,
             "ctx": ctx,
@@ -52,6 +73,108 @@ async def dashboard_page(
             "filters": filters,
         },
     )
+
+
+@router.get("/campaigns", response_class=HTMLResponse)
+async def campaigns_page(
+    request: Request,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    brand_name: str | None = Query(None),
+    material_type: str | None = Query(None),
+    status: str | None = Query(None),
+):
+    page = await CampaignService(db).get_page(
+        tenant_id,
+        brand_name=brand_name,
+        material_type=material_type,
+        status=status,
+    )
+    return templates.TemplateResponse(
+        "campaigns.html",
+        {"request": request, "ctx": ctx, "page": page},
+    )
+
+
+@router.get("/persona-mix", response_class=HTMLResponse)
+async def persona_mix_page(
+    request: Request,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    strategy = await OverviewService(db).get_persona_strategy(tenant_id)
+    return templates.TemplateResponse(
+        "persona_mix.html",
+        {"request": request, "ctx": ctx, "strategy": strategy},
+    )
+
+
+_UPLOAD_DIR = os.path.join("static", "uploads")
+
+
+@router.post("/campaigns/upload")
+async def campaigns_upload(
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    brand_name: Annotated[str, Form()] = "",
+    persona_name: Annotated[str, Form()] = "",
+    material_type: Annotated[str, Form()] = "",
+    file: Annotated[UploadFile | None, File()] = None,
+):
+    file_name = None
+    file_url = None
+    file_size = None
+    if file is not None and file.filename:
+        content = await file.read()
+        file_size = len(content)
+        file_name = file.filename
+        os.makedirs(_UPLOAD_DIR, exist_ok=True)
+        stored = f"{uuid.uuid4().hex}_{file.filename}"
+        with open(os.path.join(_UPLOAD_DIR, stored), "wb") as fh:
+            fh.write(content)
+        file_url = f"/static/uploads/{stored}"
+
+    try:
+        uploaded_by = uuid.UUID(str(ctx.user_id)) if ctx.user_id else None
+    except (ValueError, TypeError):
+        uploaded_by = None
+
+    await CampaignService(db).create_material(
+        tenant_id=tenant_id,
+        uploaded_by=uploaded_by,
+        brand_name=brand_name or None,
+        persona_name=persona_name or None,
+        material_type=material_type or None,
+        file_name=file_name,
+        file_url=file_url,
+        file_size_bytes=file_size,
+    )
+    return RedirectResponse(url="/campaigns", status_code=303)
+
+
+@router.post("/campaigns/{material_id}/push")
+async def campaigns_push(
+    material_id: uuid.UUID,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await CampaignService(db).set_status(tenant_id, material_id, "pushed")
+    return RedirectResponse(url="/campaigns", status_code=303)
+
+
+@router.post("/campaigns/{material_id}/recall")
+async def campaigns_recall(
+    material_id: uuid.UUID,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await CampaignService(db).set_status(tenant_id, material_id, "recalled")
+    return RedirectResponse(url="/campaigns", status_code=303)
 
 
 @router.get("/submission/{submission_id}", response_class=HTMLResponse)
@@ -75,8 +198,16 @@ async def submission_page(
 async def doctor_mr_mapping_page(
     request: Request,
     ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    overview = await OverviewService(db).get_overview(tenant_id)
+    stats = {
+        "total": overview["total_doctors"],
+        "mapped": overview["mapped"],
+        "unmapped": overview["unmapped"],
+    }
     return templates.TemplateResponse(
         "doctor_mr_mapping.html",
-        {"request": request, "ctx": ctx},
+        {"request": request, "ctx": ctx, "stats": stats},
     )

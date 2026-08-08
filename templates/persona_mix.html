@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Persona Mix — Strategy & Analytics{% endblock %}
+
+{% block head %}
+<style>
+  .bar-track { background: #f1f3f9; border-radius: 6px; height: 12px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; }
+  .tier-pill { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .strategy-card { border-left: 4px solid var(--dp-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb-dp mb-1"><a href="/dashboard">Dashboard</a> &rsaquo; Persona Mix</div>
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-1">Strategy &amp; Analytics</h3>
+    <div class="text-muted">Persona distribution, opportunity tiers and brand strategy.</div>
+  </div>
+  <a href="/dashboard" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <!-- Persona distribution bar chart -->
+  <div class="col-md-8">
+    <div class="card h-100"><div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-uppercase text-muted small fw-semibold">Persona Distribution</span>
+        <span class="small text-muted">{{ strategy.persona_total }} profiled doctors</span>
+      </div>
+      {% set ptotal = strategy.persona_total %}
+      {% for p in strategy.persona_mix %}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between small mb-1">
+          <span><span class="tier-pill me-2" style="background:{{ p.color }};"></span>{{ p.persona }}</span>
+          <span class="fw-semibold">
+            {{ p.count }}{% if ptotal > 0 %} <span class="text-muted">({{ (p.count / ptotal * 100)|round(1) }}%)</span>{% endif %}
+          </span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: {{ (p.count / ptotal * 100) if ptotal > 0 else 0 }}%; background:{{ p.color }};"></div>
+        </div>
+      </div>
+      {% endfor %}
+      {% if ptotal == 0 %}
+      <div class="text-muted text-center py-3">No persona data available yet.</div>
+      {% endif %}
+    </div></div>
+  </div>
+
+  <!-- Opportunity tiers -->
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold mb-3">Opportunity Tiers</div>
+      {% set ototal = strategy.opportunity | sum(attribute='count') %}
+      {% for t in strategy.opportunity %}
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <span><span class="tier-pill me-2" style="background:{{ t.color }};"></span>{{ t.tier }}</span>
+        <span class="fw-bold">{{ t.count }}</span>
+      </div>
+      {% endfor %}
+      {% if ototal == 0 %}
+      <div class="text-muted text-center py-3">No opportunity data yet.</div>
+      {% endif %}
+    </div></div>
+  </div>
+</div>
+
+<!-- Brand strategies -->
+<div class="card"><div class="card-body">
+  <div class="text-uppercase text-muted small fw-semibold mb-3">Brand Strategy &amp; MR Approach</div>
+  <div class="row g-3">
+    {% for s in strategy.strategies %}
+    <div class="col-md-6">
+      <div class="card strategy-card h-100"><div class="card-body">
+        <div class="fw-bold text-primary mb-2">{{ s.brand_name or 'Brand' }}</div>
+        {% if s.strategy %}
+        <div class="small mb-2"><span class="text-muted text-uppercase" style="font-size:.7rem;">Strategy</span><br>{{ s.strategy }}</div>
+        {% endif %}
+        {% if s.mr_approach %}
+        <div class="small"><span class="text-muted text-uppercase" style="font-size:.7rem;">MR Approach</span><br>{{ s.mr_approach }}</div>
+        {% endif %}
+      </div></div>
+    </div>
+    {% else %}
+    <div class="col-12">
+      <div class="text-muted text-center py-3">No brand strategies defined yet.</div>
+    </div>
+    {% endfor %}
+  </div>
+</div></div>
+{% endblock %}

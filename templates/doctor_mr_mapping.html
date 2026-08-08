@@ -2,7 +2,8 @@
 endblock %} {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h2>Doctor–MR mapping</h2>
+    <h3 class="fw-bold mb-1">Doctor–MR Mapping</h3>
+    <div class="text-muted">Manage and align territorial assignments.</div>
   </div>
   <div>
     <button
@@ -12,8 +13,36 @@ endblock %} {% block content %}
       onclick="openBulkDrawer()"
       disabled
     >
-      Bulk ReMap (<span id="bulk-count">0</span>)
+      <i class="fas fa-right-left me-1"></i> Bulk ReMap (<span id="bulk-count">0</span>)
     </button>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold">
+        <i class="fas fa-user-md me-1"></i> Total Doctors
+      </div>
+      <div class="fs-3 fw-bold mt-1">{{ "{:,}".format(stats.total) if stats else 0 }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold">
+        <i class="fas fa-link me-1"></i> Mapped Doctors
+      </div>
+      <div class="fs-3 fw-bold mt-1" style="color:#16a34a;">{{ "{:,}".format(stats.mapped) if stats else 0 }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-uppercase text-muted small fw-semibold">
+        <i class="fas fa-link-slash me-1"></i> Unmapped Doctors
+      </div>
+      <div class="fs-3 fw-bold mt-1 text-danger">{{ "{:,}".format(stats.unmapped) if stats else 0 }}</div>
+    </div></div>
   </div>
 </div>
 

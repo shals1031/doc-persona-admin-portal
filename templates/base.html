@@ -7,47 +7,102 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --dp-primary: #2563eb;
+            --dp-primary-dark: #1d4ed8;
+            --dp-primary-soft: #eef4ff;
+            --dp-bg: #f7f8fc;
+            --dp-sidebar-bg: #ffffff;
+            --dp-border: #e6e8ef;
+            --dp-text: #1f2937;
+            --dp-muted: #6b7280;
+            --dp-card-bg: #ffffff;
+            --dp-input-bg: #ffffff;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --dp-primary: #3b82f6;
+                --dp-primary-dark: #2563eb;
+                --dp-primary-soft: #1e293b;
+                --dp-bg: #0f172a;
+                --dp-sidebar-bg: #111827;
+                --dp-border: #1f2a3c;
+                --dp-text: #e5e7eb;
+                --dp-muted: #9ca3af;
+                --dp-card-bg: #111827;
+                --dp-input-bg: #0b1220;
+            }
+        }
         body {
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background-color: #f8f9fa;
+            background-color: var(--dp-bg);
+            color: var(--dp-text);
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
         }
         #sidebar {
             min-width: 250px;
             max-width: 250px;
             min-height: 100vh;
             transition: all 0.3s;
-            background-color: #212529;
-            color: #fff;
+            background-color: var(--dp-sidebar-bg);
+            color: var(--dp-text);
             display: flex;
             flex-direction: column;
+            border-right: 1px solid var(--dp-border);
         }
         #sidebar .sidebar-header {
-            padding: 20px;
-            background: #1a1d20;
+            padding: 22px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--dp-border);
+        }
+        #sidebar .sidebar-header .brand-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            background: var(--dp-primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+        #sidebar .sidebar-header .brand-text {
+            font-weight: 800;
+            font-size: 1.15rem;
+            color: var(--dp-primary);
+            line-height: 1;
         }
         #sidebar ul.components {
-            padding: 20px 0;
+            padding: 16px 12px;
             flex-grow: 1;
         }
+        #sidebar ul li { margin-bottom: 4px; }
         #sidebar ul li a {
-            padding: 10px 20px;
-            display: block;
-            color: #adb5bd;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--dp-muted);
             text-decoration: none;
+            border-radius: 9px;
+            font-weight: 500;
         }
         #sidebar ul li a:hover {
-            color: #fff;
-            background: #343a40;
+            color: var(--dp-primary);
+            background: var(--dp-primary-soft);
         }
         #sidebar ul li.active > a {
-            color: #fff;
-            background: #0d6efd;
+            color: var(--dp-primary);
+            background: var(--dp-primary-soft);
+            font-weight: 600;
         }
         #content {
             width: 100%;
-            padding: 20px;
+            padding: 28px 32px;
             overflow-y: auto;
         }
         .wrapper {
@@ -57,14 +112,59 @@
             height: 100vh;
         }
         .user-profile {
-            padding: 15px 20px;
-            border-top: 1px solid #343a40;
-            background-color: #1a1d20;
+            padding: 16px;
+            border-top: 1px solid var(--dp-border);
         }
-        .summary-card { border-left: 4px solid; }
-        .summary-card.draft   { border-color: #6c757d; }
-        .summary-card.submitted { border-color: #0d6efd; }
-        .summary-card.approved  { border-color: #198754; }
+        .user-profile .avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #eef1f6;
+            color: var(--dp-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-logout {
+            color: #dc3545;
+            border: 1px solid var(--dp-border);
+            background: #fbfbfd;
+            width: 100%;
+            font-weight: 600;
+        }
+        .btn-logout:hover { background: #fff0f1; color: #dc3545; }
+        .card {
+            border: 1px solid var(--dp-border);
+            border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(16,24,40,.04);
+            background-color: var(--dp-card-bg);
+            color: var(--dp-text);
+        }
+        .form-control {
+            background-color: var(--dp-input-bg);
+            border-color: var(--dp-border);
+            color: var(--dp-text);
+        }
+        .form-control:focus {
+            background-color: var(--dp-input-bg);
+            color: var(--dp-text);
+        }
+        .form-label { color: var(--dp-text); }
+        .btn-primary {
+            background-color: var(--dp-primary);
+            border-color: var(--dp-primary);
+        }
+        .btn-primary:hover {
+            background-color: var(--dp-primary-dark);
+            border-color: var(--dp-primary-dark);
+        }
+        .text-primary { color: var(--dp-primary) !important; }
+        .breadcrumb-dp { font-size: .85rem; color: var(--dp-muted); }
+        .breadcrumb-dp a { color: var(--dp-primary); text-decoration: none; }
+        .summary-card { border-top: 3px solid; }
+        .summary-card.draft   { border-color: #9ca3af; }
+        .summary-card.submitted { border-color: var(--dp-primary); }
+        .summary-card.approved  { border-color: #16a34a; }
         .summary-card.rejected  { border-color: #dc3545; }
     </style>
     {% block head %}{% endblock %}
@@ -75,56 +175,53 @@
         {% if ctx %}
         <nav id="sidebar">
             <div class="sidebar-header">
-                <h5 class="mb-0">Doc Persona</h5>
-                <small class="text-muted">Admin Portal</small>
+                <span class="brand-icon"><i class="fas fa-briefcase-medical"></i></span>
+                <span class="brand-text">Admin Portal</span>
             </div>
 
             <ul class="list-unstyled components">
                 <li class="{% if request.url.path == '/dashboard' %}active{% endif %}">
-                    <a href="/dashboard"><i class="fas fa-tachometer-alt me-2"></i> Dashboard</a>
+                    <a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a>
                 </li>
 
                 <li class="{% if request.url.path == '/doctor-mr-mapping' %}active{% endif %}">
-                    <a href="/doctor-mr-mapping"><i class="fas fa-user-md me-2"></i> Doctor MR Mapping</a>
+                    <a href="/doctor-mr-mapping"><i class="fas fa-user-plus"></i> Doctor Mapping</a>
                 </li>
-                
+
+                <li class="{% if request.url.path == '/forms' %}active{% endif %}">
+                    <a href="/forms"><i class="fas fa-file-lines"></i> Forms</a>
+                </li>
+
+                <li class="{% if request.url.path.startswith('/campaigns') %}active{% endif %}">
+                    <a href="/campaigns"><i class="fas fa-bullhorn"></i> Campaigns Materials</a>
+                </li>
+
                 {% if ctx.role == 'SYSTEM_ADMIN' %}
                 <li class="{% if request.url.path.startswith('/form-management') %}active{% endif %}">
-                    <a href="/form-management"><i class="fas fa-list-alt me-2"></i> Form Management</a>
+                    <a href="/form-management"><i class="fas fa-list-alt"></i> Form Management</a>
                 </li>
                 {% endif %}
-                <!-- Future menu items will be added here -->
             </ul>
 
             <div class="user-profile">
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="avatar me-2"><i class="fas fa-user"></i></div>
                     <div class="flex-grow-1 overflow-hidden">
                         <div class="small fw-bold text-truncate" title="{{ ctx.full_name or 'User' }}">
-                            {{ ctx.full_name or 'User' }}
+                            {{ ctx.full_name or 'System Administrator' }}
                         </div>
-                        <div class="text-muted text-truncate" style="font-size: 0.75rem;">{{ ctx.role }}</div>
+                        <div class="text-muted text-truncate" style="font-size: 0.75rem;">{{ ctx.role or 'Global System' }}</div>
                     </div>
-                    <a href="/logout" class="btn btn-outline-light btn-sm ms-2" title="Logout">
-                        <i class="fas fa-sign-out-alt"></i>
-                    </a>
                 </div>
+                <a href="/logout" class="btn btn-logout btn-sm">
+                    <i class="fas fa-sign-out-alt me-1"></i> Log out
+                </a>
             </div>
         </nav>
         {% endif %}
 
         <!-- Page Content -->
         <div id="content">
-            {% if not ctx %}
-            <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-                <div class="container-fluid">
-                    <a class="navbar-brand" href="/">Doc Persona — Admin</a>
-                    <div class="ms-auto">
-                        <a href="/login" class="btn btn-outline-light btn-sm">Login</a>
-                    </div>
-                </div>
-            </nav>
-            {% endif %}
-
             <main class="container-fluid">
                 {% block content %}{% endblock %}
             </main>

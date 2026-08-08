@@ -16,7 +16,7 @@ _schema = settings.database_schema
 
 class DoctorProfileFlatTable(Base):
     __tablename__ = "doctor_profile_flat_table"
-    __table_args__ = {"schema": "core"}
+    __table_args__ = {"schema": _schema}
 
     submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     # tenant_id is verified via join with dashboard_fact to support environments where it might be missing from this table
@@ -32,7 +32,7 @@ class DoctorProfileFlatTable(Base):
 
 class DoctorAiProfile(Base):
     __tablename__ = "doctor_ai_profile"
-    __table_args__ = {"schema": "core"}
+    __table_args__ = {"schema": _schema}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, nullable=True)
@@ -58,7 +58,7 @@ class DoctorAiProfile(Base):
 
 class DoctorPersonaHistory(Base):
     __tablename__ = "doctor_persona_history"
-    __table_args__ = {"schema": "core"}
+    __table_args__ = {"schema": _schema}
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     doctor_ai_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
