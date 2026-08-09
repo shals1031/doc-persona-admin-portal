@@ -68,11 +68,24 @@
 
 <!-- Brand strategies -->
 <div class="card"><div class="card-body">
-  <div class="text-uppercase text-muted small fw-semibold mb-3">Brand Strategy &amp; MR Approach</div>
+  <div class="text-uppercase text-muted small fw-semibold mb-2">Brand Strategy &amp; MR Approach</div>
+  {% if strategy.selected_persona %}
+  <div class="d-flex align-items-center mb-3">
+    <span class="tier-pill me-2" style="background:{{ strategy.selected_persona.color }};"></span>
+    <span class="fw-bold fs-5" style="color:{{ strategy.selected_persona.color }};">{{ strategy.selected_persona.name }}</span>
+    <span class="text-muted small ms-2">— showing data for this persona</span>
+  </div>
+  {% endif %}
   <div class="row g-3">
     {% for s in strategy.strategies %}
     <div class="col-md-6">
-      <div class="card strategy-card h-100"><div class="card-body">
+      <div class="card strategy-card h-100" style="border-left-color:{{ s.persona_color }};"><div class="card-body">
+        {% if s.persona_name %}
+        <div class="d-flex align-items-center mb-2">
+          <span class="tier-pill me-2" style="background:{{ s.persona_color }};"></span>
+          <span class="fw-bold" style="color:{{ s.persona_color }};">{{ s.persona_name }}</span>
+        </div>
+        {% endif %}
         <div class="fw-bold text-primary mb-2">{{ s.brand_name or 'Brand' }}</div>
         {% if s.strategy %}
         <div class="small mb-2"><span class="text-muted text-uppercase" style="font-size:.7rem;">Strategy</span><br>{{ s.strategy }}</div>

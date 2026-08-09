@@ -20,20 +20,47 @@ router = APIRouter(tags=["web"])
 templates = Jinja2Templates(directory="templates")
 
 
+def _parse_uuid(value: str | None) -> uuid.UUID | None:
+    """Parse an optional UUID query param, treating empty/blank as None.
+
+    The dashboard filter dropdowns submit an empty string when 'All Regions' /
+    'All Personas' is selected, which is not a valid UUID. Coerce those to None.
+    """
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    return uuid.UUID(value)
+
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(
     request: Request,
     ctx: Annotated[RequestContext, Depends(require_admin)],
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    region_id: str | None = Query(None),
+    persona_id: str | None = Query(None),
 ):
-    overview = await OverviewService(db).get_overview(tenant_id)
+    region_id = _parse_uuid(region_id)
+    persona_id = _parse_uuid(persona_id)
+    svc = OverviewService(db)
+    overview = await svc.get_overview(tenant_id, region_id, persona_id)
+    regions = await svc.get_regions(tenant_id)
+    personas = await svc.get_personas(tenant_id)
     return templates.TemplateResponse(
         "overview.html",
         {
             "request": request,
             "ctx": ctx,
             "overview": overview,
+            "regions": regions,
+            "personas": personas,
+            "filters": {
+                "region_id": str(region_id) if region_id else "",
+                "persona_id": str(persona_id) if persona_id else "",
+            },
         },
     )
 
@@ -103,8 +130,12 @@ async def persona_mix_page(
     ctx: Annotated[RequestContext, Depends(require_admin)],
     tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    region_id: str | None = Query(None),
+    persona_id: str | None = Query(None),
 ):
-    strategy = await OverviewService(db).get_persona_strategy(tenant_id)
+    region_id = _parse_uuid(region_id)
+    persona_id = _parse_uuid(persona_id)
+    strategy = await OverviewService(db).get_persona_strategy(tenant_id, region_id, persona_id)
     return templates.TemplateResponse(
         "persona_mix.html",
         {"request": request, "ctx": ctx, "strategy": strategy},

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -51,6 +51,22 @@ class DoctorAiProfile(Base):
 
     persona_tag: Mapped[str] = mapped_column(Text, nullable=True)
     persona_confidence: Mapped[float] = mapped_column(Float, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+
+
+class DoctorPersona(Base):
+    """Current persona assignment per doctor (ai.doctor_persona)."""
+
+    __tablename__ = "doctor_persona"
+    __table_args__ = {"schema": _schema}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    doctor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    persona_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    confidence: Mapped[float] = mapped_column(Numeric, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, onupdate=func.now(), nullable=True)

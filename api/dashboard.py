@@ -11,8 +11,61 @@ from middleware.tenant import resolve_tenant_id
 from schemas.auth import RequestContext
 from schemas.dashboard import DashboardFilters, DashboardListResponse, DashboardSummary
 from services.dashboard_service import DashboardService
+from services.overview_service import OverviewService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+
+def _parse_uuid(value: str | None) -> uuid.UUID | None:
+    """Parse an optional UUID query param, treating empty/blank as None.
+
+    The dashboard filter dropdowns submit an empty string when 'All Regions' /
+    'All Personas' is selected, which is not a valid UUID. Coerce those to None.
+    """
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    return uuid.UUID(value)
+
+
+@router.get("/overview")
+async def get_overview(
+    ctx: Annotated[RequestContext, Depends(require_auth)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    region_id: str | None = Query(None),
+    persona_id: str | None = Query(None),
+):
+    """Overview KPIs, persona mix and brand-engagement donuts for the tenant.
+
+    Supports the dashboard 'All Regions' (region_id -> core.territories) and
+    'All Personas' (persona_id -> ai.persona) filters.
+    """
+    return await OverviewService(db).get_overview(
+        tenant_id, _parse_uuid(region_id), _parse_uuid(persona_id)
+    )
+
+
+@router.get("/regions")
+async def get_regions(
+    ctx: Annotated[RequestContext, Depends(require_auth)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Territories (core.territories) for the tenant — 'All Regions' options."""
+    return await OverviewService(db).get_regions(tenant_id)
+
+
+@router.get("/personas")
+async def get_personas(
+    ctx: Annotated[RequestContext, Depends(require_auth)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Personas (ai.persona) assigned to the tenant — 'All Personas' options."""
+    return await OverviewService(db).get_personas(tenant_id)
 
 
 @router.get("/summary", response_model=DashboardSummary)

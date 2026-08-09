@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # JWT
-    jwt_secret: str = "change-in-production"
+    jwt_secret: str = "N_Hs9cdjWZpMrQi6vtEYTBR0GW-358N_sr-w_5GGSRw"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
