@@ -62,37 +62,50 @@
 <!-- Filter Panel -->
 <div class="card mb-3">
   <div class="card-body">
-    <form method="GET" action="/forms" class="row g-2 align-items-end">
-      <div class="col-md-3">
-        <div class="input-group input-group-sm">
-          <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
-          <input name="doctor_name" class="form-control"
-                 value="{{ filters.doctor_name or '' }}" placeholder="Search profiles...">
+    <form method="GET" action="/forms" class="row g-2 align-items-center">
+      <div class="col-md position-relative">
+        <i class="fas fa-search position-absolute text-muted" style="top: 50%; left: 14px; transform: translateY(-50%); font-size: 0.8rem;"></i>
+        <input name="doctor_name" class="form-control form-control-sm search-pill ps-4"
+               value="{{ filters.doctor_name or '' }}" placeholder="Search profiles...">
+      </div>
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative" data-field="mr_name">
+          <input type="text" class="form-control form-control-sm filter-pill searchable-input"
+                 value="{{ filters.mr_name or '' }}" placeholder="MR Name" autocomplete="off">
+          <input type="hidden" name="mr_name" value="{{ filters.mr_name or '' }}">
+          <ul class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
         </div>
       </div>
-      <div class="col-md-2">
-        <input name="mr_name" class="form-control form-control-sm"
-               value="{{ filters.mr_name or '' }}" placeholder="MR Name">
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative" data-field="mr_manager_name">
+          <input type="text" class="form-control form-control-sm filter-pill searchable-input"
+                 value="{{ filters.mr_manager_name or '' }}" placeholder="Manager Name" autocomplete="off">
+          <input type="hidden" name="mr_manager_name" value="{{ filters.mr_manager_name or '' }}">
+          <ul class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+        </div>
       </div>
-      <div class="col-md-2">
-        <input name="mr_manager_name" class="form-control form-control-sm"
-               value="{{ filters.mr_manager_name or '' }}" placeholder="Manager Name">
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative" data-field="geography">
+          <input type="text" class="form-control form-control-sm filter-pill searchable-input"
+                 value="{{ filters.geography or '' }}" placeholder="Geography" autocomplete="off">
+          <input type="hidden" name="geography" value="{{ filters.geography or '' }}">
+          <ul class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+        </div>
       </div>
-      <div class="col-md-2">
-        <input name="geography" class="form-control form-control-sm"
-               value="{{ filters.geography or '' }}" placeholder="Geography">
-      </div>
-      <div class="col-md-2">
-        <select name="form_status" class="form-select form-select-sm">
+      <div class="col-md-auto">
+        <select name="form_status" class="form-select form-select-sm filter-pill">
           <option value="">Status</option>
           {% for s in ["Draft", "Submitted", "Approved", "Rejected"] %}
           <option value="{{ s }}" {% if filters.form_status == s %}selected{% endif %}>{{ s }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-1 d-flex gap-1">
+      <div class="col-auto d-flex gap-2 align-items-center ms-auto">
         <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="/forms" class="btn btn-link btn-sm text-decoration-none">Reset</a>
+        <a href="/forms" class="btn btn-link btn-sm text-decoration-none fw-semibold px-1 filter-reset">Reset</a>
       </div>
     </form>
   </div>
@@ -146,6 +159,135 @@
 {% else %}
 <div class="card"><div class="card-body text-center text-muted py-4">No records found.</div></div>
 {% endfor %}
+
+<script>
+  // Searchable dropdowns for MR Name / Manager Name / Geography.
+  // Behaves like the native Status dropdown but is type-to-search and shows
+  // the full list of values when clicked/focused.
+  (function () {
+    const FIELD_TO_KEY = {
+      mr_name: "mrs",
+      mr_manager_name: "managers",
+      geography: "geographies",
+    };
+
+    async function loadOptions() {
+      try {
+        const res = await fetch("/api/internal/mappings/filter-options");
+        return await res.json();
+      } catch (e) {
+        console.error("Failed to load filter options", e);
+        return {};
+      }
+    }
+
+    function setupDropdown(wrapper, values) {
+      const input = wrapper.querySelector(".searchable-input");
+      const hidden = wrapper.querySelector("input[type=hidden]");
+      const menu = wrapper.querySelector(".searchable-menu");
+      const form = wrapper.closest("form");
+
+      const render = (query) => {
+        menu.innerHTML = "";
+        const lower = (query || "").toLowerCase();
+        const filtered = (values || [])
+          .filter((v) => !lower || v.toLowerCase().includes(lower))
+          .slice(0, 100);
+
+        if (filtered.length === 0) {
+          menu.classList.remove("show");
+          return;
+        }
+
+        filtered.forEach((val) => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.className = "dropdown-item text-truncate";
+          a.href = "#";
+          a.title = val;
+          a.textContent = val;
+          a.onmousedown = (e) => {
+            e.preventDefault(); // prevent blur before click
+            input.value = val;
+            hidden.value = val;
+            menu.classList.remove("show");
+            if (form) form.submit();
+          };
+          li.appendChild(a);
+          menu.appendChild(li);
+        });
+        menu.classList.add("show");
+      };
+
+      input.addEventListener("input", (e) => {
+        hidden.value = e.target.value; // allow free text too
+        render(e.target.value);
+      });
+      // Show the full list of all values on click / focus
+      input.addEventListener("focus", () => render(""));
+      input.addEventListener("click", () => render(""));
+      input.addEventListener("blur", () => {
+        setTimeout(() => menu.classList.remove("show"), 150);
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const options = await loadOptions();
+      document.querySelectorAll(".searchable-dropdown").forEach((wrapper) => {
+        const field = wrapper.getAttribute("data-field");
+        const values = options[FIELD_TO_KEY[field]] || [];
+        setupDropdown(wrapper, values);
+      });
+    });
+  })();
+</script>
+
+<style>
+  /* Searchable dropdown caret so text inputs read as dropdowns like Status */
+  .searchable-input {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 12px 9px;
+    cursor: pointer;
+  }
+  /* Pill-style filter controls to match the Figma design */
+  .filter-pill {
+    width: auto;
+    min-width: 0;
+    border-radius: 999px;
+    border-color: var(--dp-border);
+    font-weight: 500;
+    color: var(--dp-text);
+    padding: 0.4rem 2.25rem 0.4rem 1rem;
+    background-color: var(--dp-input-bg);
+    background-position: right 0.85rem center;
+    background-size: 12px 9px;
+  }
+  .filter-pill:focus {
+    box-shadow: none;
+    border-color: var(--dp-primary);
+  }
+  /* Rounded search box */
+  .search-pill {
+    border-radius: 999px;
+    border-color: var(--dp-border);
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+    background-color: var(--dp-input-bg);
+  }
+  .search-pill:focus {
+    box-shadow: none;
+    border-color: var(--dp-primary);
+  }
+  /* Blue "Reset" link like the design */
+  .filter-reset {
+    color: var(--dp-primary);
+  }
+  .filter-reset:hover {
+    color: var(--dp-primary-dark);
+  }
+</style>
 
 <!-- Pagination -->
 {% if listing.total > listing.page_size %}

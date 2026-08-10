@@ -29,6 +29,7 @@
     color: var(--dp-muted); font-size: .8rem;
   }
   /* Persona Mix SVG donut */
+  .persona-donut { overflow: visible; }
   .persona-donut circle { transition: stroke-width .12s ease, opacity .12s ease; }
   .persona-donut a { cursor: pointer; }
   .persona-donut a:hover circle { stroke-width: 7.5; }
@@ -55,7 +56,7 @@
 {% macro svg_donut(slices, total, min_arc=6) %}
   {% set d = namespace(sumdisp=0) %}
   {% for s in slices %}{% if s.count > 0 %}{% set disp = [s.count / total * 100, min_arc]|max %}{% set d.sumdisp = d.sumdisp + disp %}{% endif %}{% endfor %}
-  <svg viewBox="-17 -13 76 68" class="persona-donut" width="300" height="270" role="img" aria-label="donut chart">
+  <svg viewBox="-30 -13 102 68" class="persona-donut" width="310" height="207" role="img" aria-label="donut chart">
     <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#eef0f6" stroke-width="6"></circle>
     {% set a = namespace(acc=0) %}
     {% for s in slices %}

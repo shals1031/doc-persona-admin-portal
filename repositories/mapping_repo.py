@@ -2,9 +2,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text, delete, update
 from sqlalchemy.orm import aliased
 import uuid
-from models.auth import Doctor, MRDoctorMapping, User
+from models.auth import (
+    Doctor,
+    MRDoctorMapping,
+    User,
+    Specialization,
+    DoctorSpecializationMapping,
+)
 from schemas.mapping import MappingFilterParams
 from models.submission import Submission
+
+
+def _doctor_speciality_subquery(tenant_id: str):
+    """Correlated scalar subquery returning one specialization name per doctor.
+
+    Kept as a scalar subquery (instead of a JOIN) so doctors with multiple
+    specializations don't multiply rows in the paginated listing.
+    """
+    return (
+        select(Specialization.name)
+        .select_from(DoctorSpecializationMapping)
+        .join(
+            Specialization,
+            Specialization.id == DoctorSpecializationMapping.specialization_id,
+        )
+        .where(
+            DoctorSpecializationMapping.doctor_id == Doctor.id,
+            DoctorSpecializationMapping.tenant_id == tenant_id,
+        )
+        .order_by(Specialization.name)
+        .limit(1)
+        .correlate(Doctor)
+        .scalar_subquery()
+    )
 
 async def get_mappings_filtered(
     db: AsyncSession,
@@ -20,6 +50,7 @@ async def get_mappings_filtered(
             Doctor.name.label("doctor_name"),
             Doctor.area.label("area"),
             Doctor.state.label("state"),
+            _doctor_speciality_subquery(tenant_id).label("doctor_speciality"),
             MRUser.id.label("mr_user_id"),
             MRUser.full_name.label("mr_name"),
             ManagerUser.full_name.label("manager_name"),
@@ -41,11 +72,16 @@ async def get_mappings_filtered(
     )
 
     if filters.doctor_name:
-        base_query = base_query.where(Doctor.name.ilike(f"%{filters.doctor_name}%"))
+        term = f"%{filters.doctor_name}%"
+        base_query = base_query.where(
+            Doctor.name.ilike(term) | Doctor.doctor_code.ilike(term)
+        )
     if filters.mr_name:
-        base_query = base_query.where(MRUser.full_name.ilike(f"%{filters.mr_name}%"))
+        base_query = base_query.where(MRUser.full_name == filters.mr_name)
     if filters.manager_name:
-        base_query = base_query.where(ManagerUser.full_name.ilike(f"%{filters.manager_name}%"))
+        base_query = base_query.where(ManagerUser.full_name == filters.manager_name)
+    if filters.geolocation:
+        base_query = base_query.where(func.upper(Doctor.state) == filters.geolocation.upper())
 
     # Subquery for count
     count_query = select(func.count()).select_from(base_query.subquery())
@@ -67,7 +103,7 @@ async def get_mappings_filtered(
             "id": str(r.doctor_id),
             "doctor_id": str(r.doctor_id),
             "doctor_name": r.doctor_name or "Unknown Doctor",
-            "doctor_speciality": None,  # Data not easily available on Doctor model without joins
+            "doctor_speciality": r.doctor_speciality,
             "geolocation": geolocation,
             "mr_user_id": str(r.mr_user_id) if r.mr_user_id else None,
             "mr_name": r.mr_name,
@@ -102,11 +138,16 @@ async def get_all_filtered_doctor_ids(
     )
 
     if filters.doctor_name:
-        query = query.where(Doctor.name.ilike(f"%{filters.doctor_name}%"))
+        term = f"%{filters.doctor_name}%"
+        query = query.where(
+            Doctor.name.ilike(term) | Doctor.doctor_code.ilike(term)
+        )
     if filters.mr_name:
-        query = query.where(MRUser.full_name.ilike(f"%{filters.mr_name}%"))
+        query = query.where(MRUser.full_name == filters.mr_name)
     if filters.manager_name:
-        query = query.where(ManagerUser.full_name.ilike(f"%{filters.manager_name}%"))
+        query = query.where(ManagerUser.full_name == filters.manager_name)
+    if filters.geolocation:
+        query = query.where(func.upper(Doctor.state) == filters.geolocation.upper())
 
     result = await db.execute(query)
     return [str(row[0]) for row in result.all()]
@@ -254,9 +295,15 @@ async def get_mapping_filter_options(db: AsyncSession, tenant_id: str) -> dict:
     ).distinct()
     mgr_res = await db.execute(manager_query)
     managers = sorted([m for m in mgr_res.scalars().all() if m])
-    
+
+    geo_res = await db.execute(
+        select(func.upper(Doctor.state)).where(Doctor.tenant_id == tenant_id, Doctor.state.is_not(None)).distinct()
+    )
+    geographies = sorted({g for g in geo_res.scalars().all() if g})
+
     return {
         "doctors": doctors,
         "mrs": mrs,
-        "managers": managers
+        "managers": managers,
+        "geographies": geographies,
     }

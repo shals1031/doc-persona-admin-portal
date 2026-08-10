@@ -49,57 +49,59 @@ endblock %} {% block content %}
 <!-- Filter Bar -->
 <div class="card mb-3">
   <div class="card-body">
-    <div class="row g-2 align-items-end">
-      <div class="col-md-2 position-relative">
-        <label class="form-label small text-muted">Doctor Name</label>
-        <input
-          type="text"
-          id="filter-doctor"
-          class="form-control form-control-sm"
-          placeholder="All"
-          autocomplete="off"
-          onkeypress="if (event.key === 'Enter') applyFilters();"
-        />
+    <div class="row g-2 align-items-center">
+      <div class="col-md position-relative">
+        <div class="position-relative">
+          <i class="fas fa-search position-absolute text-muted" style="top: 50%; left: 12px; transform: translateY(-50%); font-size: 0.8rem;"></i>
+          <input
+            type="text"
+            id="filter-doctor"
+            class="form-control form-control-sm ps-4"
+            placeholder="Search Doctor Name or ID..."
+            autocomplete="off"
+            onkeypress="if (event.key === 'Enter') applyFilters();"
+          />
+        </div>
         <ul id="doctor-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
       </div>
-      <div class="col-md-2 position-relative">
-        <label class="form-label small text-muted">MR Name</label>
-        <input
-          type="text"
-          id="filter-mr"
-          class="form-control form-control-sm"
-          placeholder="All"
-          autocomplete="off"
-          onkeypress="if (event.key === 'Enter') applyFilters();"
-        />
-        <ul id="mr-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative">
+          <input type="text" id="filter-mr" class="form-control form-control-sm filter-pill searchable-input"
+                 placeholder="MR Name" autocomplete="off" />
+          <ul id="filter-mr-menu" class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+        </div>
       </div>
-      <div class="col-md-2 position-relative">
-        <label class="form-label small text-muted">Manager Name</label>
-        <input
-          type="text"
-          id="filter-manager"
-          class="form-control form-control-sm"
-          placeholder="All"
-          autocomplete="off"
-          onkeypress="if (event.key === 'Enter') applyFilters();"
-        />
-        <ul id="manager-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative">
+          <input type="text" id="filter-manager" class="form-control form-control-sm filter-pill searchable-input"
+                 placeholder="Manager Name" autocomplete="off" />
+          <ul id="filter-manager-menu" class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+        </div>
       </div>
-      <div class="col-auto d-flex gap-2">
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative">
+          <input type="text" id="filter-geolocation" class="form-control form-control-sm filter-pill searchable-input"
+                 placeholder="Geography" autocomplete="off" />
+          <ul id="filter-geolocation-menu" class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+        </div>
+      </div>
+      <div class="col-auto d-flex gap-2 align-items-center ms-auto">
+        <button
+          type="button"
+          class="btn btn-link btn-sm text-decoration-none fw-semibold px-1 filter-reset"
+          onclick="resetFilters()"
+        >
+          Reset
+        </button>
         <button
           type="button"
           class="btn btn-primary btn-sm"
           onclick="applyFilters()"
         >
           Filter
-        </button>
-        <button
-          type="button"
-          class="btn btn-outline-secondary btn-sm"
-          onclick="resetFilters()"
-        >
-          Reset
         </button>
       </div>
     </div>
@@ -357,6 +359,8 @@ endblock %} {% block content %}
     activeFilters.mr_name = document.getElementById("filter-mr").value;
     activeFilters.manager_name =
       document.getElementById("filter-manager").value;
+    activeFilters.geolocation =
+      document.getElementById("filter-geolocation").value;
     currentPage = 1;
     fetchMappings();
   }
@@ -365,10 +369,12 @@ endblock %} {% block content %}
     document.getElementById("filter-doctor").value = "";
     document.getElementById("filter-mr").value = "";
     document.getElementById("filter-manager").value = "";
+    document.getElementById("filter-geolocation").value = "";
     activeFilters = {
       doctor_name: "",
       mr_name: "",
       manager_name: "",
+      geolocation: "",
     };
     currentPage = 1;
     fetchMappings();
@@ -431,7 +437,7 @@ endblock %} {% block content %}
       };
 
       const doctorSpec = item.doctor_speciality
-        ? `<br><small class="text-muted">${item.doctor_speciality}</small>`
+        ? `<br><span class="badge rounded-pill bg-light text-dark border mt-1">${item.doctor_speciality}</span>`
         : "";
       const mrBadge = item.mr_name
         ? item.mr_name
@@ -571,16 +577,66 @@ endblock %} {% block content %}
 
   let filterData = { doctors: [], mrs: [], managers: [], locations: [] };
 
-  // Load Autocomplete Options for Filters
+  // Setup a searchable dropdown filter (type-to-search, shows full list on click)
+  function setupSearchableFilter(inputId, menuId, values) {
+    const input = document.getElementById(inputId);
+    const menu = document.getElementById(menuId);
+    if (!input || !menu) return;
+
+    const render = (query) => {
+      menu.innerHTML = "";
+      const lower = (query || "").toLowerCase();
+      const filtered = (values || [])
+        .filter((v) => !lower || v.toLowerCase().includes(lower))
+        .slice(0, 100);
+
+      if (filtered.length === 0) {
+        menu.classList.remove("show");
+        return;
+      }
+
+      filtered.forEach((val) => {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.className = "dropdown-item text-truncate";
+        a.href = "#";
+        a.title = val;
+        a.textContent = val;
+        a.onmousedown = (e) => {
+          e.preventDefault(); // prevent blur before click
+          input.value = val;
+          menu.classList.remove("show");
+          applyFilters();
+        };
+        li.appendChild(a);
+        menu.appendChild(li);
+      });
+      menu.classList.add("show");
+    };
+
+    input.addEventListener("input", (e) => render(e.target.value));
+    // Show the full list of all values on click / focus
+    input.addEventListener("focus", () => render(""));
+    input.addEventListener("click", () => render(""));
+    input.addEventListener("blur", () => {
+      setTimeout(() => menu.classList.remove("show"), 150);
+    });
+  }
+
+  // Load Options for Filters
   async function loadFilterOptions() {
     try {
       const res = await fetch(`${API_BASE}/mappings/filter-options`);
       const options = await res.json();
       filterData = options;
-      
+
+      // Doctor stays a free-text search box with autocomplete suggestions
       setupAutocomplete("filter-doctor", "doctor-autocomplete", filterData.doctors);
-      setupAutocomplete("filter-mr", "mr-autocomplete", filterData.mrs);
-      setupAutocomplete("filter-manager", "manager-autocomplete", filterData.managers);
+
+      // MR / Manager / Geography are searchable dropdowns
+      setupSearchableFilter("filter-mr", "filter-mr-menu", filterData.mrs);
+      setupSearchableFilter("filter-manager", "filter-manager-menu", filterData.managers);
+      setupSearchableFilter("filter-geolocation", "filter-geolocation-menu", filterData.geographies);
     } catch (e) {
       console.error("Failed to load filter options", e);
     }
@@ -965,14 +1021,19 @@ endblock %} {% block content %}
       activeFilters.mr_name = urlParams.get("mr_name");
     if (urlParams.has("manager_name"))
       activeFilters.manager_name = urlParams.get("manager_name");
+    if (urlParams.has("geolocation"))
+      activeFilters.geolocation = urlParams.get("geolocation");
     if (urlParams.has("page"))
       currentPage = parseInt(urlParams.get("page")) || 1;
 
-    // Set input values
+    // Set input values (dropdown options are added later by loadFilterOptions,
+    // which preserves these current values when populating).
     document.getElementById("filter-doctor").value = activeFilters.doctor_name;
     document.getElementById("filter-mr").value = activeFilters.mr_name;
     document.getElementById("filter-manager").value =
       activeFilters.manager_name;
+    document.getElementById("filter-geolocation").value =
+      activeFilters.geolocation;
 
     fetchMappings();
     loadMROptions();
@@ -984,6 +1045,41 @@ endblock %} {% block content %}
   /* Drawer styles since Bootstrap offcanvas classes might need a bit of nudging */
   .offcanvas {
     transition: transform 0.3s ease-in-out;
+  }
+
+  /* Searchable dropdown caret so text inputs read as dropdowns like a select */
+  .searchable-input {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 12px 9px;
+    cursor: pointer;
+  }
+
+  /* Pill-style filter dropdowns to match the design */
+  .filter-pill {
+    width: auto;
+    min-width: 0;
+    border-radius: 999px;
+    border-color: var(--dp-border);
+    font-weight: 500;
+    color: var(--dp-text);
+    padding: 0.4rem 2.25rem 0.4rem 1rem;
+    background-color: var(--dp-input-bg);
+    background-position: right 0.85rem center;
+    background-size: 12px 9px;
+  }
+  .filter-pill:focus {
+    box-shadow: none;
+    border-color: var(--dp-primary);
+  }
+
+  /* Blue "Reset" link like the design */
+  .filter-reset {
+    color: var(--dp-primary);
+  }
+  .filter-reset:hover {
+    color: var(--dp-primary-dark);
   }
 </style>
 {% endblock %}

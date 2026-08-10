@@ -38,6 +38,7 @@ class Doctor(Base):
     area: Mapped[str] = mapped_column(String(255), nullable=True)
     state: Mapped[str] = mapped_column(String(255), nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=True)
+    doctor_code: Mapped[str] = mapped_column(String(100), nullable=True)
     territory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
@@ -48,6 +49,24 @@ class Territory(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=True)
+
+
+class Specialization(Base):
+    __tablename__ = "specializations"
+    __table_args__ = {"schema": "core"}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=True)
+
+
+class DoctorSpecializationMapping(Base):
+    __tablename__ = "doctor_specialization_mapping"
+    __table_args__ = {"schema": "core"}
+
+    doctor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    specialization_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, nullable=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
 class MRDoctorMapping(Base):

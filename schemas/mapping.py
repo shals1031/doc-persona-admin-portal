@@ -4,9 +4,10 @@ from typing import Optional
 
 class MappingFilterParams(BaseModel):
     """Query params for the listing endpoint."""
-    doctor_name: Optional[str] = None      # free-text search
-    mr_name: Optional[str] = None          # free-text search
-    manager_name: Optional[str] = None     # free-text search
+    doctor_name: Optional[str] = None      # free-text search (name or doctor code/ID)
+    mr_name: Optional[str] = None          # exact MR name (dropdown selection)
+    manager_name: Optional[str] = None     # exact manager name (dropdown selection)
+    geolocation: Optional[str] = None      # exact geography (dropdown selection)
     page: int = 1
     page_size: int = 15
 
