@@ -11,6 +11,7 @@ from models.auth import (
 )
 from schemas.mapping import MappingFilterParams
 from models.submission import Submission
+from models.ai_engagement import DoctorBehavioralProfile
 
 
 def _doctor_speciality_subquery(tenant_id: str):
@@ -54,6 +55,7 @@ async def get_mappings_filtered(
             MRUser.id.label("mr_user_id"),
             MRUser.full_name.label("mr_name"),
             ManagerUser.full_name.label("manager_name"),
+            DoctorBehavioralProfile.category.label("category"),
         )
         .select_from(Doctor)
         .outerjoin(
@@ -67,6 +69,10 @@ async def get_mappings_filtered(
         .outerjoin(
             ManagerUser,
             (MRUser.reporting_to == ManagerUser.id)
+        )
+        .outerjoin(
+            DoctorBehavioralProfile,
+            (DoctorBehavioralProfile.doctor_id == Doctor.id) & (DoctorBehavioralProfile.tenant_id == Doctor.tenant_id)
         )
         .where(Doctor.tenant_id == tenant_id)
     )
@@ -82,6 +88,11 @@ async def get_mappings_filtered(
         base_query = base_query.where(ManagerUser.full_name == filters.manager_name)
     if filters.geolocation:
         base_query = base_query.where(func.upper(Doctor.state) == filters.geolocation.upper())
+    if filters.category:
+        cat = filters.category
+        if cat.startswith("Cat ") and len(cat) > 4:
+            cat = cat[4:]
+        base_query = base_query.where(DoctorBehavioralProfile.category == cat)
 
     # Subquery for count
     count_query = select(func.count()).select_from(base_query.subquery())
@@ -108,6 +119,7 @@ async def get_mappings_filtered(
             "mr_user_id": str(r.mr_user_id) if r.mr_user_id else None,
             "mr_name": r.mr_name,
             "manager_name": r.manager_name,
+            "category": r.category,
         })
 
     return output, total
@@ -134,6 +146,10 @@ async def get_all_filtered_doctor_ids(
         )
         .outerjoin(MRUser, MRDoctorMapping.mr_id == MRUser.id)
         .outerjoin(ManagerUser, MRUser.reporting_to == ManagerUser.id)
+        .outerjoin(
+            DoctorBehavioralProfile,
+            (DoctorBehavioralProfile.doctor_id == Doctor.id) & (DoctorBehavioralProfile.tenant_id == Doctor.tenant_id)
+        )
         .where(Doctor.tenant_id == tenant_id)
     )
 
@@ -148,6 +164,11 @@ async def get_all_filtered_doctor_ids(
         query = query.where(ManagerUser.full_name == filters.manager_name)
     if filters.geolocation:
         query = query.where(func.upper(Doctor.state) == filters.geolocation.upper())
+    if filters.category:
+        cat = filters.category
+        if cat.startswith("Cat ") and len(cat) > 4:
+            cat = cat[4:]
+        query = query.where(DoctorBehavioralProfile.category == cat)
 
     result = await db.execute(query)
     return [str(row[0]) for row in result.all()]
@@ -301,9 +322,17 @@ async def get_mapping_filter_options(db: AsyncSession, tenant_id: str) -> dict:
     )
     geographies = sorted({g for g in geo_res.scalars().all() if g})
 
+    cat_res = await db.execute(
+        select(DoctorBehavioralProfile.category)
+        .where(DoctorBehavioralProfile.tenant_id == tenant_id, DoctorBehavioralProfile.category.is_not(None))
+        .distinct()
+    )
+    categories = sorted({c for c in cat_res.scalars().all() if c})
+
     return {
         "doctors": doctors,
         "mrs": mrs,
         "managers": managers,
         "geographies": geographies,
+        "categories": categories,
     }
