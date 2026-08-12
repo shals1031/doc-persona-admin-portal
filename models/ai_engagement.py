@@ -86,6 +86,10 @@ class CampaignMaterial(Base):
     persona_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
     persona_name: Mapped[str] = mapped_column(String(255), nullable=True)
     material_type: Mapped[str] = mapped_column(String(50), nullable=True)
+    # Availability period for the material: whether it applies to a quarter or
+    # a month, and the concrete value (e.g. "Q1" or "April").
+    period_type: Mapped[str] = mapped_column(String(20), nullable=True)
+    period_value: Mapped[str] = mapped_column(String(50), nullable=True)
     file_name: Mapped[str] = mapped_column(String(512), nullable=True)
     # Raw file bytes stored directly in the DB (BYTEA); replaces the old
     # on-disk static path that used to live in this column.

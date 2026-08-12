@@ -159,6 +159,8 @@ async def campaigns_upload(
     brand_name: Annotated[str, Form()] = "",
     persona_name: Annotated[str, Form()] = "",
     material_type: Annotated[str, Form()] = "",
+    period_type: Annotated[str, Form()] = "",
+    period_value: Annotated[str, Form()] = "",
     file: Annotated[UploadFile | None, File()] = None,
 ):
     file_name = None
@@ -180,6 +182,8 @@ async def campaigns_upload(
         brand_name=brand_name or None,
         persona_name=persona_name or None,
         material_type=material_type or None,
+        period_type=period_type or None,
+        period_value=period_value or None,
         file_name=file_name,
         file_data=file_data,
         file_size_bytes=file_size,

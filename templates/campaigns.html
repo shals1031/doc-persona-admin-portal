@@ -54,7 +54,7 @@
             <input type="hidden" name="persona_name" id="personaInput" value="">
           </div>
 
-          <div class="mb-2">
+          <div class="mb-4">
             <div class="text-uppercase text-muted small fw-semibold mb-2">3. Material Type</div>
             <div class="d-flex flex-wrap gap-4">
               {% for t in page.material_types %}
@@ -64,6 +64,26 @@
                 <label class="form-check-label" for="mtype{{ loop.index }}">{{ t }}</label>
               </div>
               {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <div class="text-uppercase text-muted small fw-semibold mb-2">4. Availability Period</div>
+            <div class="row g-2">
+              <div class="col-sm-5">
+                <label class="form-label small text-muted mb-1" for="periodType">Available by</label>
+                <select class="form-select" name="period_type" id="periodType">
+                  {% for pt in page.period_types %}
+                  <option value="{{ pt }}" {% if loop.first %}selected{% endif %}>{{ pt }}-wise</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-sm-7">
+                <label class="form-label small text-muted mb-1" for="periodValue">Period</label>
+                <select class="form-select" name="period_value" id="periodValue">
+                  <!-- populated by JS based on the selected period type -->
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -105,6 +125,7 @@
           <th class="text-uppercase small">Target Brand</th>
           <th class="text-uppercase small">Target Persona</th>
           <th class="text-uppercase small">Type</th>
+          <th class="text-uppercase small">Availability</th>
           <th class="text-end pe-3 text-uppercase small">Actions</th>
         </tr>
       </thead>
@@ -126,6 +147,13 @@
             <span class="badge rounded-pill bg-primary-subtle text-primary">{{ (m.persona_name or 'All Personas')|upper }}</span>
           </td>
           <td>{{ m.material_type or '—' }}</td>
+          <td>
+            {% if m.period_value %}
+            <span class="badge rounded-pill bg-info-subtle text-info">{{ m.period_type or 'Period' }}: {{ m.period_value }}</span>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endif %}
+          </td>
           <td class="text-end pe-3">
             {% if m.status == 'pushed' %}
             <form method="POST" action="/campaigns/{{ m.id }}/recall" class="d-inline">
@@ -140,7 +168,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5" class="text-center text-muted py-4">
+          <td colspan="6" class="text-center text-muted py-4">
             No campaign materials found. Upload a file above to add one.
           </td>
         </tr>
@@ -178,6 +206,40 @@
   const personaInput = document.getElementById('personaInput');
   const pills = document.querySelectorAll('.persona-pill');
   const uploadForm = document.getElementById('uploadForm');
+  const periodType = document.getElementById('periodType');
+  const periodValue = document.getElementById('periodValue');
+
+  // Period options sourced from the server. Quarters are tenant-specific
+  // (Q1 starts at the tenant's fiscal-year start month, April by default).
+  const QUARTER_OPTIONS = [
+    {% for q in page.quarter_options %}{ value: {{ q.value|tojson }}, label: {{ q.label|tojson }} },{% endfor %}
+  ];
+  const MONTH_OPTIONS = [
+    {% for m in page.month_options %}{{ m|tojson }},{% endfor %}
+  ];
+
+  function populatePeriodValues() {
+    if (!periodType || !periodValue) return;
+    periodValue.innerHTML = '';
+    if (periodType.value === 'Month') {
+      MONTH_OPTIONS.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        periodValue.appendChild(opt);
+      });
+    } else {
+      QUARTER_OPTIONS.forEach(q => {
+        const opt = document.createElement('option');
+        opt.value = q.value;
+        opt.textContent = q.label;
+        periodValue.appendChild(opt);
+      });
+    }
+  }
+
+  if (periodType) periodType.addEventListener('change', populatePeriodValues);
+  populatePeriodValues();
 
   // Client-side validation config (mirrors the dropzone hint: PDF/PPTX/DOCX, max 50MB).
   const MAX_SIZE_BYTES = 50 * 1024 * 1024;
