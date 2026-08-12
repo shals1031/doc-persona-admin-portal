@@ -30,7 +30,7 @@
   }
   /* Persona Mix SVG donut */
   .persona-donut { overflow: visible; }
-  .persona-donut circle { transition: stroke-width .3s ease-out, opacity .3s ease-out; }
+  .persona-donut circle { transition: stroke-width .3s ease-out, opacity .3s ease-out; pointer-events: stroke; fill: none; }
   .persona-donut a { cursor: pointer; }
   .persona-donut a:hover circle { stroke-width: 10.0; }
   .persona-donut .donut-total { font-size: 5.5px; font-weight: 700; fill: #1f2937; }
@@ -71,7 +71,7 @@
   {% endfor %}
   {% set start_offset = (d.first_disp / d.sumdisp * 100) if offset_first else 0 %}
   <svg viewBox="-30 -13 102 68" class="persona-donut" width="100%" style="max-width: 600px; height: auto;" role="img" aria-label="donut chart">
-    <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#eef0f6" stroke-width="6"></circle>
+    <circle cx="21" cy="21" r="15.915" fill="none" stroke="#eef0f6" stroke-width="6"></circle>
     {% set a = namespace(acc=0) %}
     {% for s in slices %}
       {% if s.count > 0 %}
@@ -81,7 +81,7 @@
         {% set gap = 1.5 %}
         {% set draw_arc = arc - gap if arc > gap else arc %}
         {% if s.link %}<a href="{{ s.link }}" title="{{ s.label }}: {{ realpct|round(1) }}%">{% endif %}
-          <circle class="persona-slice" cx="21" cy="21" r="15.915" fill="transparent"
+          <circle class="persona-slice" cx="21" cy="21" r="15.915" fill="none"
                   stroke="{{ s.color }}" stroke-width="6"
                   stroke-dasharray="{{ draw_arc }} {{ 100 - draw_arc }}"
                   stroke-dashoffset="{{ 125 - a.acc + start_offset }}"
