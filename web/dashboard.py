@@ -1,9 +1,8 @@
-import os
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,7 +141,14 @@ async def persona_mix_page(
     )
 
 
-_UPLOAD_DIR = os.path.join("static", "uploads")
+# Map common file extensions to a MIME type for the download response.
+_CONTENT_TYPES = {
+    "pdf": "application/pdf",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "ppt": "application/vnd.ms-powerpoint",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
 
 
 @router.post("/campaigns/upload")
@@ -156,17 +162,12 @@ async def campaigns_upload(
     file: Annotated[UploadFile | None, File()] = None,
 ):
     file_name = None
-    file_url = None
+    file_data = None
     file_size = None
     if file is not None and file.filename:
-        content = await file.read()
-        file_size = len(content)
+        file_data = await file.read()
+        file_size = len(file_data)
         file_name = file.filename
-        os.makedirs(_UPLOAD_DIR, exist_ok=True)
-        stored = f"{uuid.uuid4().hex}_{file.filename}"
-        with open(os.path.join(_UPLOAD_DIR, stored), "wb") as fh:
-            fh.write(content)
-        file_url = f"/static/uploads/{stored}"
 
     try:
         uploaded_by = uuid.UUID(str(ctx.user_id)) if ctx.user_id else None
@@ -180,10 +181,32 @@ async def campaigns_upload(
         persona_name=persona_name or None,
         material_type=material_type or None,
         file_name=file_name,
-        file_url=file_url,
+        file_data=file_data,
         file_size_bytes=file_size,
     )
     return RedirectResponse(url="/campaigns", status_code=303)
+
+
+@router.get("/campaigns/{material_id}/download")
+async def campaigns_download(
+    material_id: uuid.UUID,
+    ctx: Annotated[RequestContext, Depends(require_admin)],
+    tenant_id: Annotated[uuid.UUID, Depends(resolve_tenant_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    result = await CampaignService(db).get_material_file(tenant_id, material_id)
+    if result is None or result[1] is None:
+        raise HTTPException(status_code=404, detail="File not found")
+    file_name, file_data = result
+    ext = (file_name or "").rsplit(".", 1)[-1].lower() if file_name and "." in file_name else ""
+    media_type = _CONTENT_TYPES.get(ext, "application/octet-stream")
+    return Response(
+        content=file_data,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_name or "download"}"'
+        },
+    )
 
 
 @router.post("/campaigns/{material_id}/push")

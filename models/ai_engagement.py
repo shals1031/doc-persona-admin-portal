@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text, func
+from sqlalchemy import BigInteger, DateTime, Integer, LargeBinary, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -87,8 +87,11 @@ class CampaignMaterial(Base):
     persona_name: Mapped[str] = mapped_column(String(255), nullable=True)
     material_type: Mapped[str] = mapped_column(String(50), nullable=True)
     file_name: Mapped[str] = mapped_column(String(512), nullable=True)
-    file_url: Mapped[str] = mapped_column(Text, nullable=True)
+    # Raw file bytes stored directly in the DB (BYTEA); replaces the old
+    # on-disk static path that used to live in this column.
+    file_data: Mapped[bytes] = mapped_column(LargeBinary, nullable=True)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=True)
+    # Lifecycle status driving the Push / Recall action: ready / pushed / recalled.
     status: Mapped[str] = mapped_column(String(50), nullable=True)
     uploaded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=True)
 

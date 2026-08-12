@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.ai_engagement import Brand, CampaignMaterial
+from models.ai_engagement import Brand, CampaignMaterial, Persona
 
 # Status badge styling used by the Campaign Materials table (mirrors the Figma).
 STATUS_BADGE = {
@@ -11,6 +11,16 @@ STATUS_BADGE = {
     "pushed": "primary",
     "recalled": "secondary",
 }
+
+# Allowed material types for the Campaign Materials screen.
+MATERIAL_TYPES = [
+    "Journal Article",
+    "Case Study",
+    "Product Update",
+    "REW",
+    "Clinical Practice Guidelines",
+    "Others",
+]
 
 
 def _human_size(num_bytes) -> str:
@@ -48,6 +58,7 @@ class CampaignService:
         return {
             "materials": materials,
             "brands": brands,
+            "material_types": MATERIAL_TYPES,
             "summary": summary,
             "filters": {
                 "brand_name": brand_name,
@@ -84,7 +95,7 @@ class CampaignService:
                 "persona_name": r.persona_name or "All Personas",
                 "material_type": r.material_type,
                 "file_name": r.file_name,
-                "file_url": r.file_url,
+                "has_file": r.file_data is not None,
                 "file_size": _human_size(r.file_size_bytes),
                 "status": r.status or "ready",
                 "badge": STATUS_BADGE.get((r.status or "ready").lower(), "secondary"),
@@ -119,6 +130,33 @@ class CampaignService:
             "recalled": counts.get("recalled", 0),
         }
 
+    async def _resolve_brand_id(
+        self, tenant_id: uuid.UUID, brand_name: str | None
+    ) -> uuid.UUID | None:
+        """Look up the brand id for a brand name within the tenant."""
+        if not brand_name:
+            return None
+        result = await self.db.execute(
+            select(Brand.id)
+            .where(Brand.tenant_id == tenant_id)
+            .where(Brand.name == brand_name)
+            .limit(1)
+        )
+        row = result.first()
+        return row[0] if row else None
+
+    async def _resolve_persona_id(
+        self, persona_name: str | None
+    ) -> uuid.UUID | None:
+        """Look up the persona id for a persona name."""
+        if not persona_name:
+            return None
+        result = await self.db.execute(
+            select(Persona.id).where(Persona.name == persona_name).limit(1)
+        )
+        row = result.first()
+        return row[0] if row else None
+
     async def create_material(
         self,
         tenant_id: uuid.UUID,
@@ -127,24 +165,57 @@ class CampaignService:
         persona_name: str | None,
         material_type: str | None,
         file_name: str | None,
-        file_url: str | None = None,
+        file_data: bytes | None = None,
         file_size_bytes: int | None = None,
-    ) -> CampaignMaterial:
-        material = CampaignMaterial(
-            id=uuid.uuid4(),
-            tenant_id=tenant_id,
-            brand_name=brand_name,
-            persona_name=persona_name or "All Personas",
-            material_type=material_type,
-            file_name=file_name,
-            file_url=file_url,
-            file_size_bytes=file_size_bytes,
-            status="ready",
-            uploaded_by=uploaded_by,
-        )
-        self.db.add(material)
+    ) -> list[CampaignMaterial]:
+        """Create one campaign material row per selected persona.
+
+        When multiple personas are selected the ``persona_name`` field arrives
+        comma-separated; a separate row (with its resolved ``persona_id``) is
+        inserted for each persona.
+        """
+        brand_id = await self._resolve_brand_id(tenant_id, brand_name)
+
+        personas = [
+            p.strip() for p in (persona_name or "").split(",") if p.strip()
+        ] or ["All Personas"]
+
+        materials: list[CampaignMaterial] = []
+        for persona in personas:
+            persona_id = await self._resolve_persona_id(persona)
+            material = CampaignMaterial(
+                id=uuid.uuid4(),
+                tenant_id=tenant_id,
+                brand_id=brand_id,
+                brand_name=brand_name,
+                persona_id=persona_id,
+                persona_name=persona,
+                material_type=material_type,
+                file_name=file_name,
+                file_data=file_data,
+                file_size_bytes=file_size_bytes,
+                status="ready",
+                uploaded_by=uploaded_by,
+            )
+            self.db.add(material)
+            materials.append(material)
+
         await self.db.commit()
-        return material
+        return materials
+
+    async def get_material_file(
+        self, tenant_id: uuid.UUID, material_id: uuid.UUID
+    ) -> tuple[str | None, bytes | None] | None:
+        """Return (file_name, file_data) for the given material, or None."""
+        result = await self.db.execute(
+            select(CampaignMaterial.file_name, CampaignMaterial.file_data)
+            .where(CampaignMaterial.id == material_id)
+            .where(CampaignMaterial.tenant_id == tenant_id)
+        )
+        row = result.first()
+        if row is None:
+            return None
+        return row[0], row[1]
 
     async def set_status(
         self, tenant_id: uuid.UUID, material_id: uuid.UUID, status: str
@@ -156,3 +227,4 @@ class CampaignService:
             .values(status=status)
         )
         await self.db.commit()
+

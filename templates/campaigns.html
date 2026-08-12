@@ -1,113 +1,95 @@
 {% extends "base.html" %}
 {% block title %}Campaign Materials — Admin Portal{% endblock %}
 
+{% set personas = ["Evidence Champion", "Practical Pragmatist", "Price Guardian", "Loyal Incumbent", "Relationship Builder", "Early Mover"] %}
+{% set brand_options = page.brands if page.brands else ["NVM-LC", "Comig"] %}
+{% macro file_icon(name) %}
+  {%- set ext = (name or '').rsplit('.', 1)[-1] | lower if name and '.' in name else '' -%}
+  {%- if ext == 'pdf' -%}
+    <i class="fas fa-file-pdf text-danger me-2"></i>
+  {%- elif ext in ['doc', 'docx'] -%}
+    <i class="fas fa-file-word text-primary me-2"></i>
+  {%- elif ext in ['ppt', 'pptx'] -%}
+    <i class="fas fa-file-powerpoint text-warning me-2"></i>
+  {%- else -%}
+    <i class="fas fa-file text-muted me-2"></i>
+  {%- endif -%}
+{% endmacro %}
+
 {% block content %}
 <div class="breadcrumb-dp mb-1"><a href="/dashboard">Dashboard</a> &rsaquo; Campaigns Materials</div>
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h3 class="fw-bold mb-0">Campaign Materials</h3>
-  <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#uploadPanel">
-    <i class="fas fa-upload me-1"></i> Upload Material
-  </button>
 </div>
 
-<!-- Summary cards -->
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-uppercase text-muted small fw-semibold">Total Materials</div>
-      <div class="fs-3 fw-bold">{{ page.summary.total }}</div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-uppercase small fw-semibold" style="color:#16a34a;">Ready</div>
-      <div class="fs-3 fw-bold">{{ page.summary.ready }}</div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-uppercase text-primary small fw-semibold">Pushed to MR</div>
-      <div class="fs-3 fw-bold">{{ page.summary.pushed }}</div>
-    </div></div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card h-100"><div class="card-body">
-      <div class="text-uppercase text-muted small fw-semibold">Recalled</div>
-      <div class="fs-3 fw-bold">{{ page.summary.recalled }}</div>
-    </div></div>
-  </div>
-</div>
-
-<!-- Upload panel (collapsed by default) -->
-<div class="collapse mb-3" id="uploadPanel">
-  <div class="card">
-    <div class="card-body">
-      <h6 class="fw-bold mb-3">Upload New Material</h6>
-      <form method="POST" action="/campaigns/upload" enctype="multipart/form-data" class="row g-2 align-items-end">
-        <div class="col-md-3">
-          <label class="form-label small text-muted mb-1">Brand</label>
-          <select name="brand_name" class="form-select form-select-sm">
-            <option value="">Select brand…</option>
-            {% for b in page.brands %}
-            <option value="{{ b }}">{{ b }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label small text-muted mb-1">Target Persona</label>
-          <input name="persona_name" class="form-control form-control-sm" placeholder="All Personas">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label small text-muted mb-1">Material Type</label>
-          <select name="material_type" class="form-select form-select-sm">
-            {% for t in ["Document", "LBL", "Brochure"] %}
-            <option value="{{ t }}">{{ t }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label small text-muted mb-1">File</label>
-          <input type="file" name="file" class="form-control form-control-sm">
-        </div>
-        <div class="col-md-1">
-          <button type="submit" class="btn btn-primary btn-sm w-100">Upload</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Filters -->
-<div class="card mb-3">
+<!-- Upload / configure card -->
+<div class="card mb-4">
   <div class="card-body">
-    <form method="GET" action="/campaigns" class="row g-2 align-items-end">
-      <div class="col-md-3">
-        <select name="brand_name" class="form-select form-select-sm">
-          <option value="">All Brands</option>
-          {% for b in page.brands %}
-          <option value="{{ b }}" {% if page.filters.brand_name == b %}selected{% endif %}>{{ b }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <select name="material_type" class="form-select form-select-sm">
-          <option value="">All Types</option>
-          {% for t in ["Document", "LBL", "Brochure"] %}
-          <option value="{{ t }}" {% if page.filters.material_type == t %}selected{% endif %}>{{ t }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
-        <select name="status" class="form-select form-select-sm">
-          <option value="">All Statuses</option>
-          {% for s in ["ready", "pushed", "recalled"] %}
-          <option value="{{ s }}" {% if page.filters.status == s %}selected{% endif %}>{{ s|capitalize }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3 d-flex gap-1">
-        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-        <a href="/campaigns" class="btn btn-link btn-sm text-decoration-none">Reset</a>
+    <form id="uploadForm" method="POST" action="/campaigns/upload" enctype="multipart/form-data">
+      <div class="row g-4">
+        <!-- Left column: brand / persona / material type -->
+        <div class="col-lg-6 border-end">
+          <div class="mb-4">
+            <div class="text-uppercase text-muted small fw-semibold mb-2">1. Select Brand</div>
+            <div class="d-flex flex-wrap gap-4">
+              {% for b in brand_options %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="brand_name" id="brand{{ loop.index }}"
+                       value="{{ b }}" {% if loop.first %}checked{% endif %}>
+                <label class="form-check-label" for="brand{{ loop.index }}">{{ b }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="text-uppercase text-muted small fw-semibold mb-2">2. Target Persona</div>
+            <div class="d-flex flex-wrap gap-2" id="personaPills">
+              {% for p in personas %}
+              <button type="button" class="btn btn-sm btn-outline-primary rounded-pill persona-pill" data-persona="{{ p }}">
+                {{ p }}
+              </button>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="persona_name" id="personaInput" value="">
+          </div>
+
+          <div class="mb-2">
+            <div class="text-uppercase text-muted small fw-semibold mb-2">3. Material Type</div>
+            <div class="d-flex flex-wrap gap-4">
+              {% for t in page.material_types %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="material_type" id="mtype{{ loop.index }}"
+                       value="{{ t }}" {% if loop.first %}checked{% endif %}>
+                <label class="form-check-label" for="mtype{{ loop.index }}">{{ t }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column: drop zone -->
+        <div class="col-lg-6">
+          <div id="dropZone" class="upload-dropzone text-center d-flex flex-column justify-content-center align-items-center">
+            <div class="upload-icon mb-3"><i class="fas fa-cloud-upload-alt fa-2x text-muted"></i></div>
+            <div class="fw-bold fs-5">Click to upload or drag and drop</div>
+            <div class="text-muted small">PDF, PPTX, or DOCX (max. 50MB)</div>
+            <input type="file" name="file" id="fileInput" class="d-none" accept=".pdf,.pptx,.docx">
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-3">
+            <button type="button" id="cancelUpload" class="btn btn-outline-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-1"></i> Upload Files</button>
+          </div>
+
+          <div id="readyToUpload" class="mt-3 d-none">
+            <div class="fw-semibold mb-1">Ready to Upload:</div>
+            <div class="d-flex justify-content-between align-items-center border rounded p-2">
+              <span><i id="fileNameIcon" class="fas fa-file text-muted me-2"></i><span id="fileNameLabel"></span></span>
+              <button type="button" id="clearFile" class="btn btn-sm btn-link text-muted p-0"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
+        </div>
       </div>
     </form>
   </div>
@@ -119,50 +101,47 @@
     <table class="table align-middle mb-0">
       <thead class="table-light">
         <tr>
-          <th class="ps-3">Material</th>
-          <th>Brand</th>
-          <th>Target Persona</th>
-          <th>Type</th>
-          <th>Size</th>
-          <th>Status</th>
-          <th class="text-end pe-3">Actions</th>
+          <th class="ps-3 text-uppercase small">File Name</th>
+          <th class="text-uppercase small">Target Brand</th>
+          <th class="text-uppercase small">Target Persona</th>
+          <th class="text-uppercase small">Type</th>
+          <th class="text-end pe-3 text-uppercase small">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for m in page.materials %}
         <tr>
           <td class="ps-3">
-            <i class="fas fa-file-lines text-primary me-2"></i>
+            {{ file_icon(m.file_name) }}
+            {% if m.has_file %}
+            <a href="/campaigns/{{ m.id }}/download" class="fw-semibold text-decoration-none">{{ m.file_name or '—' }}</a>
+            {% else %}
             <span class="fw-semibold">{{ m.file_name or '—' }}</span>
-          </td>
-          <td>{{ m.brand_name or '—' }}</td>
-          <td>{{ m.persona_name }}</td>
-          <td>{{ m.material_type or '—' }}</td>
-          <td>{{ m.file_size }}</td>
-          <td>
-            <span class="badge rounded-pill bg-{{ m.badge }}-subtle text-{{ m.badge }}">{{ m.status|capitalize }}</span>
-          </td>
-          <td class="text-end pe-3">
-            {% if m.file_url %}
-            <a href="{{ m.file_url }}" class="btn btn-outline-secondary btn-sm" title="Download">
-              <i class="fas fa-download"></i>
-            </a>
             {% endif %}
+          </td>
+          <td>
+            <span class="badge rounded-pill bg-success-subtle text-success">{{ m.brand_name or '—' }}</span>
+          </td>
+          <td>
+            <span class="badge rounded-pill bg-primary-subtle text-primary">{{ (m.persona_name or 'All Personas')|upper }}</span>
+          </td>
+          <td>{{ m.material_type or '—' }}</td>
+          <td class="text-end pe-3">
             {% if m.status == 'pushed' %}
             <form method="POST" action="/campaigns/{{ m.id }}/recall" class="d-inline">
-              <button class="btn btn-outline-danger btn-sm">Recall</button>
+              <button class="btn btn-outline-danger btn-sm rounded-pill px-3">Recall</button>
             </form>
             {% else %}
             <form method="POST" action="/campaigns/{{ m.id }}/push" class="d-inline">
-              <button class="btn btn-outline-primary btn-sm">Push to MR</button>
+              <button class="btn btn-primary btn-sm rounded-pill px-3">Push</button>
             </form>
             {% endif %}
           </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" class="text-center text-muted py-4">
-            No campaign materials found. Use “Upload Material” to add one.
+          <td colspan="5" class="text-center text-muted py-4">
+            No campaign materials found. Upload a file above to add one.
           </td>
         </tr>
         {% endfor %}
@@ -170,4 +149,126 @@
     </table>
   </div>
 </div>
+
+<style>
+  .upload-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    min-height: 230px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .upload-dropzone.dragover { border-color: #2563eb; background: #eff6ff; }
+  .upload-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #f1f5f9; display: flex; align-items: center; justify-content: center;
+  }
+  .persona-pill.active { color: #fff; background-color: #2563eb; border-color: #2563eb; }
+</style>
+
+<script>
+(function () {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const ready = document.getElementById('readyToUpload');
+  const fileNameLabel = document.getElementById('fileNameLabel');
+  const fileNameIcon = document.getElementById('fileNameIcon');
+  const clearFile = document.getElementById('clearFile');
+  const cancelBtn = document.getElementById('cancelUpload');
+  const personaInput = document.getElementById('personaInput');
+  const pills = document.querySelectorAll('.persona-pill');
+  const uploadForm = document.getElementById('uploadForm');
+
+  // Client-side validation config (mirrors the dropzone hint: PDF/PPTX/DOCX, max 50MB).
+  const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+  const ALLOWED_EXTENSIONS = ['pdf', 'pptx', 'docx'];
+  const ALLOWED_MIME_TYPES = [
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+
+  function validateFile(f) {
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    const typeOk = ALLOWED_EXTENSIONS.includes(ext) ||
+      (f.type && ALLOWED_MIME_TYPES.includes(f.type));
+    if (!typeOk) {
+      return 'Invalid file type. Only PDF, PPTX, or DOCX files are allowed.';
+    }
+    if (f.size > MAX_SIZE_BYTES) {
+      return 'File is too large. Maximum allowed size is 50MB.';
+    }
+    return null;
+  }
+
+  function setFileIcon(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    let cls = 'fas fa-file text-muted me-2';
+    if (ext === 'pdf') cls = 'fas fa-file-pdf text-danger me-2';
+    else if (ext === 'doc' || ext === 'docx') cls = 'fas fa-file-word text-primary me-2';
+    else if (ext === 'ppt' || ext === 'pptx') cls = 'fas fa-file-powerpoint text-warning me-2';
+    fileNameIcon.className = cls;
+  }
+
+  function showFile() {
+    if (fileInput.files && fileInput.files.length) {
+      const error = validateFile(fileInput.files[0]);
+      if (error) {
+        alert(error);
+        fileInput.value = '';
+        ready.classList.add('d-none');
+        return;
+      }
+      fileNameLabel.textContent = fileInput.files[0].name;
+      setFileIcon(fileInput.files[0].name);
+      ready.classList.remove('d-none');
+    } else {
+      ready.classList.add('d-none');
+    }
+  }
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', showFile);
+
+  uploadForm.addEventListener('submit', e => {
+    if (!fileInput.files || !fileInput.files.length) {
+      e.preventDefault();
+      alert('Please select a file to upload.');
+      return;
+    }
+    const error = validateFile(fileInput.files[0]);
+    if (error) {
+      e.preventDefault();
+      alert(error);
+    }
+  });
+
+  ['dragover', 'dragenter'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); }));
+  dropZone.addEventListener('drop', e => {
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      showFile();
+    }
+  });
+
+  clearFile.addEventListener('click', () => { fileInput.value = ''; showFile(); });
+  cancelBtn.addEventListener('click', () => {
+    fileInput.value = '';
+    showFile();
+    pills.forEach(p => p.classList.remove('active'));
+    personaInput.value = '';
+  });
+
+  pills.forEach(pill => pill.addEventListener('click', () => {
+    pill.classList.toggle('active');
+    const selected = Array.from(pills)
+      .filter(p => p.classList.contains('active'))
+      .map(p => p.dataset.persona);
+    personaInput.value = selected.join(', ');
+  }));
+})();
+</script>
 {% endblock %}
