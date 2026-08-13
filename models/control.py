@@ -18,6 +18,9 @@ class Tenant(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True, server_default='true')
+    # Month (1-12) in which the tenant's fiscal year / Q1 begins. Defaults to
+    # April (4) so that Q1 = Apr-Jun and subsequent quarters follow.
+    fiscal_year_start_month: Mapped[int] = mapped_column(Integer, nullable=False, default=4, server_default='4')
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
