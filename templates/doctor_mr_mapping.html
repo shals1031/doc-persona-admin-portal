@@ -128,7 +128,7 @@ endblock %} {% block content %}
   </div>
 
   <!-- Select All Header -->
-  <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+  <div id="select-all-container" class="justify-content-between align-items-center mb-3 px-2" style="display: none;">
     <div class="form-check m-0">
       <input class="form-check-input shadow-sm" type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="cursor:pointer; width:1.1rem; height:1.1rem;">
       <label class="form-check-label text-muted small fw-semibold ms-1" for="select-all-checkbox" style="cursor:pointer; padding-top:2px;">
@@ -446,9 +446,15 @@ endblock %} {% block content %}
       
       card.onclick = (e) => {
         if (!e.target.closest("button") && !e.target.closest("input[type=checkbox]")) {
-          openDrawer(item);
+          const checkbox = card.querySelector('.doctor-checkbox');
+          if (checkbox) checkbox.click();
         }
       };
+
+      let displayName = item.doctor_name;
+      if (!displayName.toLowerCase().startsWith("dr.") && !displayName.toLowerCase().startsWith("dr ")) {
+          displayName = "Dr. " + displayName;
+      }
 
       const doctorSpec = item.doctor_speciality
         ? `<span class="badge bg-light text-secondary border me-1 rounded-pill px-2" style="font-weight: 500;">${item.doctor_speciality}</span>`
@@ -474,8 +480,8 @@ endblock %} {% block content %}
       }
 
       const mrText = item.mr_name
-        ? `<div class="fw-semibold text-dark small">${item.mr_name}</div>`
-        : `<div class="fw-semibold text-warning small">Unassigned</div>`;
+        ? `<div class="fw-bold text-dark" style="font-size: 0.95rem;">${item.mr_name}</div>`
+        : `<div class="fw-bold text-warning" style="font-size: 0.95rem;">Unassigned</div>`;
       const managerText = item.manager_name || "—";
       const locText = item.geolocation || "—";
       const checkedAttr = isChecked ? "checked" : "";
@@ -488,7 +494,7 @@ endblock %} {% block content %}
             
             <div class="flex-grow-1 row align-items-center g-3">
                 <div class="col-md-4">
-                    <h6 class="mb-1 fw-bold text-dark" style="font-size:1.05rem;">${item.doctor_name}</h6>
+                    <h6 class="mb-1 fw-bold text-dark" style="font-size:1.1rem;">${displayName}</h6>
                     <div class="d-flex align-items-center flex-wrap gap-1 mt-1">
                         ${doctorSpec}
                         ${catBadge}
@@ -496,18 +502,16 @@ endblock %} {% block content %}
                 </div>
                 
                 <div class="col-md-3">
-                    <div class="text-uppercase text-muted" style="font-size: 0.65rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">MR</div>
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">MR</div>
                     ${mrText}
                 </div>
 
-                <div class="col-md-2">
-                    <div class="text-uppercase text-muted" style="font-size: 0.65rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">Manager</div>
-                    <div class="text-dark small">${managerText}</div>
-                </div>
-
-                <div class="col-md-2">
-                    <div class="text-uppercase text-muted" style="font-size: 0.65rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">Location</div>
-                    <div class="text-dark small text-truncate" title="${locText}">${locText}</div>
+                <div class="col-md-4">
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">Manager</div>
+                    <div class="fw-semibold text-dark" style="font-size: 0.95rem;">${managerText}</div>
+                    <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-geo-alt-fill me-1 mb-1" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>${locText}
+                    </div>
                 </div>
 
                 <div class="col-md-1 text-md-end text-start mt-3 mt-md-0">
@@ -943,6 +947,15 @@ endblock %} {% block content %}
     const countSpan = document.getElementById("bulk-count");
     countSpan.textContent = selectedDoctorIds.size;
     btn.disabled = selectedDoctorIds.size === 0;
+    
+    const selectAllContainer = document.getElementById("select-all-container");
+    if (selectAllContainer) {
+        if (selectedDoctorIds.size > 0) {
+            selectAllContainer.style.setProperty("display", "flex", "important");
+        } else {
+            selectAllContainer.style.setProperty("display", "none", "important");
+        }
+    }
   }
 
   function updateSelectAllCheckbox() {
