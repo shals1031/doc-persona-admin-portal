@@ -317,11 +317,34 @@ class OverviewService:
           * behavioral opportunity tiers from ai.doctor_behavioral_profile
           * per-brand strategy narratives from ai.brand_strategy
         """
+        total_profiled = await self._count_profiled_doctors(tenant_id, region_id)
         persona_mix = await self._persona_mix(tenant_id, region_id, persona_id)
         persona_total = sum(p["count"] for p in persona_mix)
 
-        opportunity = await self._opportunity_tiers(tenant_id)
+        for p in persona_mix:
+            p["global_pct"] = round((p["count"] / total_profiled * 100), 1) if total_profiled else 0
+
+        opportunity = await self._opportunity_tiers(tenant_id, region_id, persona_id)
         strategies = await self._brand_strategies(tenant_id, persona_id)
+
+        # Extract MR Approach narrative
+        mr_approach = None
+        for s in strategies:
+            if s.get("mr_approach"):
+                mr_approach = s["mr_approach"]
+                break
+
+        if not mr_approach and persona_id:
+            res = await self.db.execute(
+                select(DoctorBehavioralProfile.mr_guidelines)
+                .where(
+                    DoctorBehavioralProfile.tenant_id == tenant_id,
+                    DoctorBehavioralProfile.persona_id == persona_id,
+                    DoctorBehavioralProfile.mr_guidelines.is_not(None),
+                )
+                .limit(1)
+            )
+            mr_approach = res.scalar_one_or_none()
 
         # When a specific persona is selected, resolve its name + colour so the
         # page can highlight which persona the data belongs to.
@@ -333,6 +356,7 @@ class OverviewService:
             name = res.scalar_one_or_none()
             if name:
                 selected_persona = {
+                    "id": str(persona_id),
                     "name": name,
                     "color": PERSONA_COLORS.get(name, "#94a3b8"),
                 }
@@ -340,21 +364,31 @@ class OverviewService:
         return {
             "persona_mix": persona_mix,
             "persona_total": persona_total,
+            "total_profiled": total_profiled,
             "opportunity": opportunity,
             "strategies": strategies,
+            "mr_approach": mr_approach,
             "selected_persona": selected_persona,
         }
 
-    async def _opportunity_tiers(self, tenant_id: uuid.UUID) -> list[dict]:
-        result = await self.db.execute(
+    async def _opportunity_tiers(
+        self,
+        tenant_id: uuid.UUID,
+        region_id: uuid.UUID | None = None,
+        persona_id: uuid.UUID | None = None,
+    ) -> list[dict]:
+        doctor_ids = self._filtered_doctor_ids(tenant_id, region_id, persona_id)
+        stmt = (
             select(
                 DoctorBehavioralProfile.opportunity_tier.label("tier"),
                 func.count(DoctorBehavioralProfile.id).label("count"),
             )
             .where(DoctorBehavioralProfile.tenant_id == tenant_id)
             .where(DoctorBehavioralProfile.opportunity_tier.is_not(None))
+            .where(DoctorBehavioralProfile.doctor_id.in_(doctor_ids))
             .group_by(DoctorBehavioralProfile.opportunity_tier)
         )
+        result = await self.db.execute(stmt)
         counts = {row.tier: int(row.count) for row in result.all()}
         tier_colors = {"High": "#16a34a", "Medium": "#f59e0b", "Low": "#94a3b8"}
         tiers: list[dict] = []

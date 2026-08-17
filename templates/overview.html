@@ -30,19 +30,26 @@
   }
   /* Persona Mix SVG donut */
   .persona-donut { overflow: visible; }
-  .persona-donut circle { transition: stroke-width .12s ease, opacity .12s ease; }
+  .persona-donut circle { transition: stroke-width .3s ease-out, opacity .3s ease-out; pointer-events: stroke; fill: none; }
   .persona-donut a { cursor: pointer; }
-  .persona-donut a:hover circle { stroke-width: 7.5; }
-  .persona-donut .donut-total { font-size: 7px; font-weight: 700; fill: #1f2937; }
-  .persona-donut .donut-sub { font-size: 2.6px; fill: #6b7280; letter-spacing: .1em; }
+  .persona-donut a:hover circle { stroke-width: 10.0; }
+  .persona-donut .donut-total { font-size: 5.5px; font-weight: 700; fill: #1f2937; }
+  .persona-donut .donut-sub { font-size: 2.2px; fill: #6b7280; letter-spacing: .1em; }
   /* Outside leader-line callout labels (arrow style) */
   .persona-donut .callout-line { fill: none; stroke: #9aa2b1; stroke-width: .35px; }
   .persona-donut .callout-dot { stroke: none; }
   .persona-donut .callout-label { pointer-events: none; }
-  .persona-donut .callout-label .lbl-name { font-size: 2.4px; font-weight: 600; fill: #374151; }
-  .persona-donut .callout-label .lbl-pct { font-size: 2.8px; font-weight: 700; fill: #111827; }
-  .persona-legend { color: inherit; text-decoration: none; }
-  .persona-legend:hover { background: var(--dp-primary-soft); color: inherit; }
+  .persona-donut .callout-label .lbl-name { font-size: 2.1px; font-weight: 600; fill: #374151; }
+  .persona-donut .callout-label .lbl-pct { font-size: 2.4px; font-weight: 700; fill: #111827; }
+  .persona-legend { color: inherit; text-decoration: none; transition: background .2s; }
+  .persona-legend:hover { background: var(--dp-primary-soft); color: inherit; border-radius: 6px; }
+  .bottom-charts .persona-donut { transform: scale(1.18); transform-origin: center; }
+  .bottom-charts .persona-donut .donut-total { font-size: 6px; }
+  .bottom-charts .persona-donut .donut-sub { font-size: 2.4px; }
+  .bottom-charts .persona-donut .callout-label .lbl-name { font-size: 2.35px; }
+  .bottom-charts .persona-donut .callout-label .lbl-pct { font-size: 2.65px; }
+  .bottom-charts .brand-status-label { font-size: 0.95rem; font-weight: 500; color: #374151; }
+  .bottom-charts .brand-status-count { font-size: 0.95rem; font-weight: 600; color: #111827; }
 </style>
 {% endblock %}
 
@@ -53,23 +60,32 @@
   visible, while the labels always report the TRUE percentage. Geometry uses the
   redistributed "display" arc; the label text uses the real percentage.
 #}
-{% macro svg_donut(slices, total, min_arc=6) %}
-  {% set d = namespace(sumdisp=0) %}
-  {% for s in slices %}{% if s.count > 0 %}{% set disp = [s.count / total * 100, min_arc]|max %}{% set d.sumdisp = d.sumdisp + disp %}{% endif %}{% endfor %}
-  <svg viewBox="-30 -13 102 68" class="persona-donut" width="310" height="207" role="img" aria-label="donut chart">
-    <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#eef0f6" stroke-width="6"></circle>
+{% macro svg_donut(slices, total, min_arc=6, offset_first=false) %}
+  {% set d = namespace(sumdisp=0, first_disp=0) %}
+  {% for s in slices %}
+    {% if s.count > 0 %}
+      {% set disp = [s.count / total * 100, min_arc]|max %}
+      {% set d.sumdisp = d.sumdisp + disp %}
+      {% if loop.first %}{% set d.first_disp = disp %}{% endif %}
+    {% endif %}
+  {% endfor %}
+  {% set start_offset = (d.first_disp / d.sumdisp * 100) if offset_first else 0 %}
+  <svg viewBox="-30 -13 102 68" class="persona-donut" width="100%" style="max-width: 600px; height: auto;" role="img" aria-label="donut chart">
+    <circle cx="21" cy="21" r="15.915" fill="none" stroke="#eef0f6" stroke-width="6"></circle>
     {% set a = namespace(acc=0) %}
     {% for s in slices %}
       {% if s.count > 0 %}
         {% set realpct = s.count / total * 100 %}
         {% set disp = [realpct, min_arc]|max %}
         {% set arc = disp / d.sumdisp * 100 %}
+        {% set gap = 1.5 %}
+        {% set draw_arc = arc - gap if arc > gap else arc %}
         {% if s.link %}<a href="{{ s.link }}" title="{{ s.label }}: {{ realpct|round(1) }}%">{% endif %}
-          <circle class="persona-slice" cx="21" cy="21" r="15.915" fill="transparent"
+          <circle class="persona-slice" cx="21" cy="21" r="15.915" fill="none"
                   stroke="{{ s.color }}" stroke-width="6"
-                  stroke-dasharray="{{ arc }} {{ 100 - arc }}"
-                  stroke-dashoffset="{{ 125 - a.acc }}"
-                  data-start="{{ a.acc }}" data-arc="{{ arc }}"
+                  stroke-dasharray="{{ draw_arc }} {{ 100 - draw_arc }}"
+                  stroke-dashoffset="{{ 125 - a.acc + start_offset }}"
+                  data-start="{{ a.acc - start_offset }}" data-arc="{{ draw_arc }}"
                   data-pct="{{ realpct }}" data-name="{{ s.label }}">
             <title>{{ s.label }}: {{ realpct|round(1) }}%</title>
           </circle>
@@ -139,17 +155,17 @@
     <div class="card"><div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <span class="text-uppercase text-muted small fw-semibold">Persona Mix</span>
-        <a href="/persona-mix" class="small text-primary text-decoration-none">Strategy &rsaquo;</a>
+        <a href="/persona-mix" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold">Strategy &rsaquo;</a>
       </div>
       {% set total = overview.persona_total %}
       <div class="row align-items-center">
-        <div class="col-md-5 d-flex justify-content-center mb-3 mb-md-0">
+        <div class="col-md-7 d-flex justify-content-md-end justify-content-center pe-md-5 mb-3 mb-md-0">
           {% if total > 0 %}
           {% set pslices = [] %}
-          {% for p in overview.persona_mix %}
+          {% for p in overview.persona_mix|reverse %}
             {% set _ = pslices.append({'label': p.persona, 'color': p.color, 'count': p.count, 'link': '/persona-mix?persona_id=' ~ p.persona_id}) %}
           {% endfor %}
-          {{ svg_donut(pslices, total) }}
+          {{ svg_donut(pslices, total, offset_first=true) }}
           {% else %}
           <div class="donut" style="background:#e6e8ef;">
             <div class="donut-center"><div class="fw-bold fs-4">0</div>
@@ -157,12 +173,12 @@
           </div>
           {% endif %}
         </div>
-        <div class="col-md-7">
+        <div class="col-md-5 ps-md-4 border-start">
           <ul class="list-unstyled mb-0">
             {% for p in overview.persona_mix %}
-            <li>
+            <li class="border-bottom {% if loop.last %}border-0{% endif %}">
               <a href="/persona-mix?persona_id={{ p.persona_id }}"
-                 class="persona-legend d-flex justify-content-between align-items-center py-2 px-2 rounded">
+                 class="persona-legend d-flex justify-content-between align-items-center py-2 px-2">
                 <span><span class="legend-dot me-2" style="background:{{ p.color }};"></span>{{ p.persona }}</span>
                 <span class="fw-semibold">
                   {% if total > 0 %}{{ (p.count / total * 100)|round(1) }}%{% endif %}
@@ -178,42 +194,46 @@
 </div>
 
 <!-- Brand Engagement Status donuts (one per brand), equal width on their own row -->
-<div class="row g-3">
+<div class="row g-3 bottom-charts">
   {% for brand in overview.brand_status %}
   <div class="col-md-6">
     <div class="card h-100"><div class="card-body">
       <div class="text-uppercase text-muted small fw-semibold mb-3">
         <span class="legend-dot me-1" style="background:var(--dp-primary);"></span> {{ brand.brand }} Status
       </div>
-      <div class="d-flex justify-content-center mb-3">
-        {% set btotal = brand.total %}
-        {% if btotal > 0 %}
-          {% set bslices = [] %}
-          {% for s in brand.statuses %}
-            {% set _ = bslices.append({'label': s.status, 'color': s.color, 'count': s.count, 'link': None}) %}
-          {% endfor %}
-          {{ svg_donut(bslices, btotal) }}
-        {% else %}
-          <div class="donut" style="background:#e6e8ef;">
-            <div class="donut-center"><div class="fw-bold fs-4">0</div>
-            <div class="text-muted" style="font-size:.65rem;">TOTAL</div></div>
-          </div>
-        {% endif %}
+      <div class="row align-items-center">
+        <div class="col-md-6 d-flex justify-content-md-end justify-content-center pe-md-3 mb-3 mb-md-0">
+          {% set btotal = brand.total %}
+          {% if btotal > 0 %}
+            {% set bslices = [] %}
+            {% for s in brand.statuses %}
+              {% set _ = bslices.append({'label': s.status, 'color': s.color, 'count': s.count, 'link': None}) %}
+            {% endfor %}
+            {{ svg_donut(bslices, btotal) }}
+          {% else %}
+            <div class="donut" style="background:#e6e8ef;">
+              <div class="donut-center"><div class="fw-bold fs-4">0</div>
+              <div class="text-muted" style="font-size:.65rem;">TOTAL</div></div>
+            </div>
+          {% endif %}
+        </div>
+        <div class="col-md-6 ps-md-3 border-start">
+          {% if brand.statuses %}
+          <ul class="list-unstyled mb-0">
+            {% for s in brand.statuses %}
+            <li class="d-flex justify-content-between align-items-center py-2">
+              <span><span class="legend-dot me-2" style="background:{{ s.color }};"></span><span class="brand-status-label">{{ s.status }}</span></span>
+              <span class="brand-status-count">
+                {{ s.count }}{% if btotal > 0 %} <span class="text-muted fw-normal" style="font-size: 0.9rem;">({{ (s.count / btotal * 100)|round(1) }}%)</span>{% endif %}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <div class="empty-source p-3 text-center">No engagement data yet.</div>
+          {% endif %}
+        </div>
       </div>
-      {% if brand.statuses %}
-      <ul class="list-unstyled mb-0">
-        {% for s in brand.statuses %}
-        <li class="d-flex justify-content-between align-items-center py-1 small">
-          <span><span class="legend-dot me-2" style="background:{{ s.color }};"></span>{{ s.status }}</span>
-          <span class="fw-semibold">
-            {{ s.count }}{% if btotal > 0 %} <span class="text-muted">({{ (s.count / btotal * 100)|round(1) }}%)</span>{% endif %}
-          </span>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <div class="empty-source p-3 text-center">No engagement data yet.</div>
-      {% endif %}
     </div></div>
   </div>
   {% else %}
@@ -243,7 +263,9 @@
     var donuts = document.querySelectorAll('.persona-donut');
     donuts.forEach(function (svg) {
       var slices = svg.querySelectorAll('.persona-slice');
-      slices.forEach(function (slice) {
+      var callouts = [];
+
+      slices.forEach(function (slice, index) {
         var start = parseFloat(slice.getAttribute('data-start')) || 0;
         var arc = parseFloat(slice.getAttribute('data-arc')) || 0;
         var pct = parseFloat(slice.getAttribute('data-pct')) || 0;
@@ -254,44 +276,81 @@
         var theta = (mid / 100) * 2 * Math.PI;
         var sin = Math.sin(theta), cos = Math.cos(theta);
         var right = sin >= 0;
+        
+        var curElbow = rElbow + (index % 2 === 0 ? 0 : 3);
         var x0 = cx + rRing * sin, y0 = cy - rRing * cos;   // on the ring
-        var x1 = cx + rElbow * sin, y1 = cy - rElbow * cos;  // elbow
-        var x2 = x1 + (right ? xText : -xText), y2 = y1;     // label anchor
-
-        var poly = document.createElementNS(SVG_NS, 'polyline');
-        poly.setAttribute('class', 'callout-line');
-        poly.setAttribute('points', x0 + ',' + y0 + ' ' + x1 + ',' + y1 + ' ' + x2 + ',' + y2);
-        svg.appendChild(poly);
-
-        var dot = document.createElementNS(SVG_NS, 'circle');
-        dot.setAttribute('class', 'callout-dot');
-        dot.setAttribute('cx', x0);
-        dot.setAttribute('cy', y0);
-        dot.setAttribute('r', 0.6);
-        dot.setAttribute('fill', color);
-        svg.appendChild(dot);
-
-        var text = document.createElementNS(SVG_NS, 'text');
-        text.setAttribute('x', x2 + (right ? 0.8 : -0.8));
-        text.setAttribute('y', y2);
-        text.setAttribute('text-anchor', right ? 'start' : 'end');
-        text.setAttribute('dominant-baseline', 'central');
-        text.setAttribute('class', 'callout-label');
-        var t1 = document.createElementNS(SVG_NS, 'tspan');
-        t1.setAttribute('x', x2 + (right ? 0.8 : -0.8));
-        t1.setAttribute('dy', '-1.2');
-        t1.setAttribute('class', 'lbl-name');
-        t1.textContent = name;
-        var t2 = document.createElementNS(SVG_NS, 'tspan');
-        t2.setAttribute('x', x2 + (right ? 0.8 : -0.8));
-        t2.setAttribute('dy', '2.9');
-        t2.setAttribute('class', 'lbl-pct');
-        t2.setAttribute('fill', color);
-        t2.textContent = pct.toFixed(1) + '%';
-        text.appendChild(t1);
-        text.appendChild(t2);
-        svg.appendChild(text);
+        var x1 = cx + curElbow * sin, y1 = cy - curElbow * cos;  // elbow
+        
+        callouts.push({
+          right: right,
+          x0: x0, y0: y0,
+          x1: x1, y1: y1,
+          name: name,
+          pct: pct,
+          color: color
+        });
       });
+
+      var leftCallouts = callouts.filter(function(c) { return !c.right; });
+      var rightCallouts = callouts.filter(function(c) { return c.right; });
+
+      leftCallouts.sort(function(a, b) { return a.y1 - b.y1; });
+      rightCallouts.sort(function(a, b) { return a.y1 - b.y1; });
+
+      var minSpace = 6.2;
+
+      function renderGroup(group) {
+        var lastY = -999;
+        group.forEach(function(c) {
+          var y2 = c.y1;
+          if (y2 < lastY + minSpace) {
+            y2 = lastY + minSpace;
+          }
+          lastY = y2;
+          var x2 = c.x1 + (c.right ? xText : -xText);
+
+          var poly = document.createElementNS(SVG_NS, 'polyline');
+          poly.setAttribute('class', 'callout-line');
+          poly.setAttribute('points', c.x0 + ',' + c.y0 + ' ' + c.x1 + ',' + y2 + ' ' + x2 + ',' + y2);
+          svg.appendChild(poly);
+
+          var dot = document.createElementNS(SVG_NS, 'circle');
+          dot.setAttribute('class', 'callout-dot');
+          dot.setAttribute('cx', c.x0);
+          dot.setAttribute('cy', c.y0);
+          dot.setAttribute('r', 0.6);
+          dot.setAttribute('fill', c.color);
+          svg.appendChild(dot);
+
+          var text = document.createElementNS(SVG_NS, 'text');
+          text.setAttribute('x', x2 + (c.right ? 0.8 : -0.8));
+          text.setAttribute('y', y2);
+          text.setAttribute('text-anchor', c.right ? 'start' : 'end');
+          text.setAttribute('dominant-baseline', 'central');
+          text.setAttribute('class', 'callout-label');
+
+          var t1 = document.createElementNS(SVG_NS, 'tspan');
+          t1.setAttribute('x', x2 + (c.right ? 0.8 : -0.8));
+          t1.setAttribute('dy', '-1.2');
+          t1.setAttribute('class', 'lbl-name');
+          t1.setAttribute('fill', c.color);
+          t1.textContent = c.name;
+
+          var t2 = document.createElementNS(SVG_NS, 'tspan');
+          t2.setAttribute('x', x2 + (c.right ? 0.8 : -0.8));
+          t2.setAttribute('dy', '3.5');
+          t2.setAttribute('class', 'lbl-pct');
+          t2.setAttribute('fill', c.color);
+          t2.textContent = c.pct.toFixed(1) + '%';
+
+          text.appendChild(t1);
+          text.appendChild(t2);
+          svg.appendChild(text);
+        });
+      }
+
+      renderGroup(leftCallouts);
+      renderGroup(rightCallouts);
     });
   })();
 </script>

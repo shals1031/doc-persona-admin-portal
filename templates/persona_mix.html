@@ -4,20 +4,39 @@
 {% block head %}
 <style>
   .bar-track { background: #f1f3f9; border-radius: 6px; height: 12px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 6px; }
+  .bar-fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
   .tier-pill { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-  .strategy-card { border-left: 4px solid var(--dp-primary); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="breadcrumb-dp mb-1"><a href="/dashboard">Dashboard</a> &rsaquo; Persona Mix</div>
-<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+<div class="breadcrumb-dp mb-1">
+  <a href="/dashboard">Dashboard</a> &rsaquo; 
+  {% if strategy.selected_persona %}
+    <a href="/persona-mix">Persona Mix</a> &rsaquo; {{ strategy.selected_persona.name }}
+  {% else %}
+    Persona Mix
+  {% endif %}
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
   <div>
     <h3 class="fw-bold mb-1">Strategy &amp; Analytics</h3>
     <div class="text-muted">Persona distribution, opportunity tiers and brand strategy.</div>
   </div>
-  <a href="/dashboard" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back</a>
+
+  {% if strategy.selected_persona %}
+  <div class="d-inline-flex justify-content-center align-items-center text-center"
+       style="background: linear-gradient(135deg, {{ strategy.selected_persona.color }}22, {{ strategy.selected_persona.color }}0e); border: 1.5px solid {{ strategy.selected_persona.color }}50; border-radius: 12px; min-width: 380px; padding: 10px 48px; box-shadow: 0 3px 12px {{ strategy.selected_persona.color }}18;">
+    <span class="fw-bold text-dark" style="font-size: 1.35rem; letter-spacing: 0.02em;">
+      {{ strategy.selected_persona.name }}
+    </span>
+  </div>
+  {% endif %}
+
+  <div>
+    <a href="/dashboard" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to Dashboard</a>
+  </div>
 </div>
 
 <div class="row g-3 mb-3">
@@ -26,24 +45,25 @@
     <div class="card h-100"><div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <span class="text-uppercase text-muted small fw-semibold">Persona Distribution</span>
-        <span class="small text-muted">{{ strategy.persona_total }} profiled doctors</span>
+        <span class="small text-muted">{{ strategy.total_profiled }} profiled doctors</span>
       </div>
-      {% set ptotal = strategy.persona_total %}
-      {% for p in strategy.persona_mix %}
+      {% set shown_count = namespace(value=0) %}
+      {% for p in strategy.persona_mix if p.count > 0 %}
+      {% set shown_count.value = shown_count.value + 1 %}
       <div class="mb-3">
         <div class="d-flex justify-content-between small mb-1">
-          <span><span class="tier-pill me-2" style="background:{{ p.color }};"></span>{{ p.persona }}</span>
+          <span class="fw-medium"><span class="tier-pill me-2" style="background:{{ p.color }};"></span>{{ p.persona }}</span>
           <span class="fw-semibold">
-            {{ p.count }}{% if ptotal > 0 %} <span class="text-muted">({{ (p.count / ptotal * 100)|round(1) }}%)</span>{% endif %}
+            {{ p.count }} <span class="text-muted fw-normal">({{ p.global_pct }}%)</span>
           </span>
         </div>
         <div class="bar-track">
-          <div class="bar-fill" style="width: {{ (p.count / ptotal * 100) if ptotal > 0 else 0 }}%; background:{{ p.color }};"></div>
+          <div class="bar-fill" style="width: {{ p.global_pct }}%; background:{{ p.color }};"></div>
         </div>
       </div>
       {% endfor %}
-      {% if ptotal == 0 %}
-      <div class="text-muted text-center py-3">No persona data available yet.</div>
+      {% if shown_count.value == 0 %}
+      <div class="text-muted text-center py-4">No persona data available.</div>
       {% endif %}
     </div></div>
   </div>
@@ -51,55 +71,122 @@
   <!-- Opportunity tiers -->
   <div class="col-md-4">
     <div class="card h-100"><div class="card-body">
-      <div class="text-uppercase text-muted small fw-semibold mb-3">Opportunity Tiers</div>
       {% set ototal = strategy.opportunity | sum(attribute='count') %}
-      {% for t in strategy.opportunity %}
-      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="text-uppercase text-muted small fw-semibold">Opportunity Tiers</span>
+        <span class="small text-muted">{{ ototal }} doctors</span>
+      </div>
+      {% set opp_shown = namespace(value=0) %}
+      {% for t in strategy.opportunity if t.count > 0 %}
+      {% set opp_shown.value = opp_shown.value + 1 %}
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom {% if loop.last %}border-0{% endif %}">
         <span><span class="tier-pill me-2" style="background:{{ t.color }};"></span>{{ t.tier }}</span>
-        <span class="fw-bold">{{ t.count }}</span>
+        <span class="fw-semibold">{{ t.count }} <span class="text-muted fw-normal small">({% if ototal > 0 %}{{ (t.count / ototal * 100)|round(1) }}%{% else %}0%{% endif %})</span></span>
       </div>
       {% endfor %}
-      {% if ototal == 0 %}
-      <div class="text-muted text-center py-3">No opportunity data yet.</div>
+      {% if opp_shown.value == 0 %}
+      <div class="text-muted text-center py-4">No opportunity data for this persona yet.</div>
       {% endif %}
     </div></div>
   </div>
 </div>
 
-<!-- Brand strategies -->
+<!-- Brand Strategy & MR Approach -->
 <div class="card"><div class="card-body">
-  <div class="text-uppercase text-muted small fw-semibold mb-2">Brand Strategy &amp; MR Approach</div>
-  {% if strategy.selected_persona %}
-  <div class="d-flex align-items-center mb-3">
-    <span class="tier-pill me-2" style="background:{{ strategy.selected_persona.color }};"></span>
-    <span class="fw-bold fs-5" style="color:{{ strategy.selected_persona.color }};">{{ strategy.selected_persona.name }}</span>
-    <span class="text-muted small ms-2">— showing data for this persona</span>
-  </div>
-  {% endif %}
-  <div class="row g-3">
-    {% for s in strategy.strategies %}
-    <div class="col-md-6">
-      <div class="card strategy-card h-100" style="border-left-color:{{ s.persona_color }};"><div class="card-body">
-        {% if s.persona_name %}
-        <div class="d-flex align-items-center mb-2">
-          <span class="tier-pill me-2" style="background:{{ s.persona_color }};"></span>
-          <span class="fw-bold" style="color:{{ s.persona_color }};">{{ s.persona_name }}</span>
-        </div>
-        {% endif %}
-        <div class="fw-bold text-primary mb-2">{{ s.brand_name or 'Brand' }}</div>
-        {% if s.strategy %}
-        <div class="small mb-2"><span class="text-muted text-uppercase" style="font-size:.7rem;">Strategy</span><br>{{ s.strategy }}</div>
-        {% endif %}
-        {% if s.mr_approach %}
-        <div class="small"><span class="text-muted text-uppercase" style="font-size:.7rem;">MR Approach</span><br>{{ s.mr_approach }}</div>
-        {% endif %}
-      </div></div>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-uppercase text-muted small fw-semibold">Brand Strategy &amp; MR Approach</div>
+    {% if not strategy.selected_persona %}
+    <div>
+      <select id="strategyPersonaFilter" class="form-select form-select-sm shadow-sm" style="width: auto; min-width: 180px; border-radius: 8px;">
+        <option value="all">All Personas</option>
+        {% for p in strategy.persona_mix if p.count > 0 %}
+        <option value="{{ p.persona }}">{{ p.persona }}</option>
+        {% endfor %}
+      </select>
     </div>
-    {% else %}
-    <div class="col-12">
-      <div class="text-muted text-center py-3">No brand strategies defined yet.</div>
+    {% endif %}
+  </div>
+  
+  {% for persona_name, group_strategies in strategy.strategies|groupby('persona_name') %}
+  {% set first_strategy = group_strategies|first %}
+  <div class="row g-3 strategy-row {% if not loop.first %}mt-4 pt-3 border-top{% endif %}" data-persona="{{ persona_name }}">
+    
+    <!-- MR Approach for {{ persona_name }} -->
+    <div class="col-md-4">
+      <div class="card h-100 border-0 position-relative" style="background: #eff6ff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div class="card-body p-4 {% if not strategy.selected_persona %}pt-5{% endif %}">
+          {% if not strategy.selected_persona %}
+          <span class="position-absolute top-0 end-0 mt-3 me-3 badge rounded-pill px-3 py-1" style="background-color: {{ first_strategy.persona_color }}15; color: {{ first_strategy.persona_color }}; border: 1px solid {{ first_strategy.persona_color }}40; font-weight: 600;">
+            {{ persona_name }}
+          </span>
+          {% endif %}
+          <div class="d-flex align-items-center mb-3 fw-bold small text-uppercase" style="color: #2563eb; letter-spacing: .06em;">
+            <i class="fas fa-user-tie me-2"></i> MR Approach
+          </div>
+          <p class="mb-0" style="font-size: 0.92rem; line-height: 1.6; color: #1e293b;">
+            {{ strategy.mr_approach if strategy.selected_persona else (first_strategy.mr_approach or 'Focus on data-driven conversations and tailored clinical evidence.') }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Brand Strategies for {{ persona_name }} -->
+    {% for s in group_strategies %}
+    {% set is_nvmlc = 'nvm' in (s.brand_name|lower) %}
+    {% set is_comig = 'comig' in (s.brand_name|lower) %}
+    {% set card_bg = '#f0fdf4' if is_nvmlc else ('#fefce8' if is_comig else '#f8fafc') %}
+    {% set header_color = '#16a34a' if is_nvmlc else ('#b45309' if is_comig else '#475569') %}
+    <div class="col-md-4">
+      <div class="card h-100 border-0 position-relative" style="background: {{ card_bg }}; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+        <div class="card-body p-4 {% if not strategy.selected_persona %}pt-5{% endif %}">
+          {% if not strategy.selected_persona %}
+          <span class="position-absolute top-0 end-0 mt-3 me-3 badge rounded-pill px-3 py-1" style="background-color: {{ s.persona_color }}15; color: {{ s.persona_color }}; border: 1px solid {{ s.persona_color }}40; font-weight: 600;">
+            {{ s.persona_name }}
+          </span>
+          {% endif %}
+          <div class="d-flex align-items-center mb-3 fw-bold small text-uppercase" style="color: {{ header_color }}; letter-spacing: .06em;">
+            <i class="fas fa-link me-2"></i> {{ s.brand_name }} Strategies
+          </div>
+          <p class="mb-0" style="font-size: 0.92rem; line-height: 1.6; color: #1e293b;">
+            {{ s.strategy }}
+          </p>
+        </div>
+      </div>
     </div>
     {% endfor %}
   </div>
+  {% else %}
+  <div class="text-muted text-center py-4">No brand strategies defined for this persona yet.</div>
+  {% endfor %}
 </div></div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const filter = document.getElementById("strategyPersonaFilter");
+    if (filter) {
+      filter.addEventListener("change", function(e) {
+        const selected = e.target.value;
+        const rows = document.querySelectorAll(".strategy-row");
+        
+        let visibleCount = 0;
+        rows.forEach(row => {
+          if (selected === "all" || row.dataset.persona === selected) {
+            row.style.display = "flex";
+            if (visibleCount === 0) {
+              row.classList.remove("mt-4", "pt-3", "border-top");
+            } else {
+              row.classList.add("mt-4", "pt-3", "border-top");
+            }
+            visibleCount++;
+          } else {
+            row.style.display = "none";
+          }
+        });
+      });
+    }
+  });
+</script>
 {% endblock %}
