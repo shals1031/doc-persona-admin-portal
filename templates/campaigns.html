@@ -51,6 +51,9 @@
               </button>
               {% endfor %}
             </div>
+            <div id="personaError" class="text-danger small mt-2 d-none">
+              <i class="fas fa-circle-exclamation me-1"></i>Select one persona
+            </div>
             <input type="hidden" name="persona_name" id="personaInput" value="">
           </div>
 
@@ -64,6 +67,9 @@
                 <label class="form-check-label" for="mtype{{ loop.index }}">{{ t }}</label>
               </div>
               {% endfor %}
+            </div>
+            <div id="materialTypeError" class="text-danger small mt-2 d-none">
+              <i class="fas fa-circle-exclamation me-1"></i>Select a material type
             </div>
           </div>
 
@@ -85,6 +91,9 @@
                 </select>
               </div>
             </div>
+            <div id="periodError" class="text-danger small mt-2 d-none">
+              <i class="fas fa-circle-exclamation me-1"></i>Select an availability period
+            </div>
           </div>
         </div>
 
@@ -95,6 +104,9 @@
             <div class="fw-bold fs-5">Click to upload or drag and drop</div>
             <div class="text-muted small">PDF, PPTX, or DOCX (max. 50MB)</div>
             <input type="file" name="file" id="fileInput" class="d-none" accept=".pdf,.pptx,.docx">
+          </div>
+          <div id="fileError" class="text-danger small mt-2 d-none">
+            <i class="fas fa-circle-exclamation me-1"></i><span id="fileErrorMessage">Please select a file to upload</span>
           </div>
 
           <div class="d-flex justify-content-between align-items-center mt-3">
@@ -187,6 +199,7 @@
     transition: border-color .15s ease, background .15s ease;
   }
   .upload-dropzone.dragover { border-color: #2563eb; background: #eff6ff; }
+  .upload-dropzone.border-danger { border-color: #dc3545 !important; background: #fef2f2; }
   .upload-icon {
     width: 56px; height: 56px; border-radius: 50%;
     background: #f1f5f9; display: flex; align-items: center; justify-content: center;
@@ -208,6 +221,11 @@
   const uploadForm = document.getElementById('uploadForm');
   const periodType = document.getElementById('periodType');
   const periodValue = document.getElementById('periodValue');
+  const personaError = document.getElementById('personaError');
+  const materialTypeError = document.getElementById('materialTypeError');
+  const periodError = document.getElementById('periodError');
+  const fileError = document.getElementById('fileError');
+  const fileErrorMessage = document.getElementById('fileErrorMessage');
 
   // Period options sourced from the server. Quarters are tenant-specific
   // (Q1 starts at the tenant's fiscal-year start month, April by default).
@@ -238,8 +256,25 @@
     }
   }
 
-  if (periodType) periodType.addEventListener('change', populatePeriodValues);
+  if (periodType) {
+    periodType.addEventListener('change', () => {
+      populatePeriodValues();
+      if (periodError) periodError.classList.add('d-none');
+    });
+  }
+  if (periodValue) {
+    periodValue.addEventListener('change', () => {
+      if (periodError) periodError.classList.add('d-none');
+    });
+  }
   populatePeriodValues();
+
+  // Clear material type error on radio select
+  document.querySelectorAll('input[name="material_type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      if (materialTypeError) materialTypeError.classList.add('d-none');
+    });
+  });
 
   // Client-side validation config (mirrors the dropzone hint: PDF/PPTX/DOCX, max 50MB).
   const MAX_SIZE_BYTES = 50 * 1024 * 1024;
@@ -273,10 +308,16 @@
   }
 
   function showFile() {
+    if (fileError) fileError.classList.add('d-none');
+    dropZone.classList.remove('border-danger');
     if (fileInput.files && fileInput.files.length) {
       const error = validateFile(fileInput.files[0]);
       if (error) {
-        alert(error);
+        if (fileError && fileErrorMessage) {
+          fileErrorMessage.textContent = error;
+          fileError.classList.remove('d-none');
+          dropZone.classList.add('border-danger');
+        }
         fileInput.value = '';
         ready.classList.add('d-none');
         return;
@@ -293,15 +334,56 @@
   fileInput.addEventListener('change', showFile);
 
   uploadForm.addEventListener('submit', e => {
-    if (!fileInput.files || !fileInput.files.length) {
-      e.preventDefault();
-      alert('Please select a file to upload.');
-      return;
+    let hasError = false;
+
+    // Reset error displays
+    if (personaError) personaError.classList.add('d-none');
+    if (materialTypeError) materialTypeError.classList.add('d-none');
+    if (periodError) periodError.classList.add('d-none');
+    if (fileError) fileError.classList.add('d-none');
+    dropZone.classList.remove('border-danger');
+
+    // 1. Validate Target Persona
+    if (!personaInput.value || !personaInput.value.trim()) {
+      if (personaError) personaError.classList.remove('d-none');
+      hasError = true;
     }
-    const error = validateFile(fileInput.files[0]);
-    if (error) {
+
+    // 2. Validate Material Type
+    const selectedMaterialType = document.querySelector('input[name="material_type"]:checked');
+    if (!selectedMaterialType) {
+      if (materialTypeError) materialTypeError.classList.remove('d-none');
+      hasError = true;
+    }
+
+    // 3. Validate Availability Period
+    if (periodValue && (!periodValue.value || !periodValue.value.trim())) {
+      if (periodError) periodError.classList.remove('d-none');
+      hasError = true;
+    }
+
+    // 4. Validate File
+    if (!fileInput.files || !fileInput.files.length) {
+      if (fileError && fileErrorMessage) {
+        fileErrorMessage.textContent = 'Please select a file to upload.';
+        fileError.classList.remove('d-none');
+        dropZone.classList.add('border-danger');
+      }
+      hasError = true;
+    } else {
+      const error = validateFile(fileInput.files[0]);
+      if (error) {
+        if (fileError && fileErrorMessage) {
+          fileErrorMessage.textContent = error;
+          fileError.classList.remove('d-none');
+          dropZone.classList.add('border-danger');
+        }
+        hasError = true;
+      }
+    }
+
+    if (hasError) {
       e.preventDefault();
-      alert(error);
     }
   });
 
@@ -322,14 +404,23 @@
     showFile();
     pills.forEach(p => p.classList.remove('active'));
     personaInput.value = '';
+    if (personaError) personaError.classList.add('d-none');
+    if (materialTypeError) materialTypeError.classList.add('d-none');
+    if (periodError) periodError.classList.add('d-none');
+    if (fileError) fileError.classList.add('d-none');
+    dropZone.classList.remove('border-danger');
   });
 
   pills.forEach(pill => pill.addEventListener('click', () => {
-    pill.classList.toggle('active');
-    const selected = Array.from(pills)
-      .filter(p => p.classList.contains('active'))
-      .map(p => p.dataset.persona);
-    personaInput.value = selected.join(', ');
+    const wasActive = pill.classList.contains('active');
+    pills.forEach(p => p.classList.remove('active'));
+    if (!wasActive) {
+      pill.classList.add('active');
+      personaInput.value = pill.dataset.persona;
+      if (personaError) personaError.classList.add('d-none');
+    } else {
+      personaInput.value = '';
+    }
   }));
 })();
 </script>
