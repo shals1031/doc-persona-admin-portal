@@ -353,6 +353,7 @@ endblock %} {% block content %}
     mr_name: "",
     manager_name: "",
     geolocation: "",
+    category: "",
   };
   let activeDoctorId = null;
   let activeDrawerMrName = null;
@@ -706,17 +707,17 @@ endblock %} {% block content %}
       setupSearchableFilter("filter-manager", "filter-manager-menu", filterData.managers);
       setupSearchableFilter("filter-geolocation", "filter-geolocation-menu", filterData.geographies);
       
-      let categoryOptions = filterData.categories || [];
-      // Format category strings correctly for the dropdown (e.g. "Cat A")
-      categoryOptions = categoryOptions.map(cat => {
+      let categoryOptions = (filterData.categories || [])
+        .filter(cat => cat && typeof cat === 'string' && cat.trim() !== '' && cat.trim().toLowerCase() !== 'undefined' && cat.trim().toLowerCase() !== 'null' && cat.trim() !== '0')
+        .map(cat => {
           let displayCat = cat.trim();
           if (displayCat.length === 1) {
-              return "Cat " + displayCat;
+            return "Cat " + displayCat.toUpperCase();
           } else if (!displayCat.toLowerCase().startsWith("cat") && !displayCat.toLowerCase().startsWith("category")) {
-              return "Cat " + displayCat;
+            return "Cat " + displayCat;
           }
           return displayCat;
-      });
+        });
       // Remove any duplicates that might have been created by mapping
       categoryOptions = [...new Set(categoryOptions)].sort();
       setupSearchableFilter("filter-category", "filter-category-menu", categoryOptions);
@@ -1136,14 +1137,14 @@ endblock %} {% block content %}
 
     // Set input values (dropdown options are added later by loadFilterOptions,
     // which preserves these current values when populating).
-    document.getElementById("filter-doctor").value = activeFilters.doctor_name;
-    document.getElementById("filter-mr").value = activeFilters.mr_name;
+    document.getElementById("filter-doctor").value = activeFilters.doctor_name || "";
+    document.getElementById("filter-mr").value = activeFilters.mr_name || "";
     document.getElementById("filter-manager").value =
-      activeFilters.manager_name;
+      activeFilters.manager_name || "";
     document.getElementById("filter-geolocation").value =
-      activeFilters.geolocation;
+      activeFilters.geolocation || "";
     document.getElementById("filter-category").value =
-      activeFilters.category;
+      activeFilters.category || "";
 
     fetchMappings();
     loadMROptions();
