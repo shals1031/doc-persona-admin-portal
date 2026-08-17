@@ -5,48 +5,56 @@
 <!-- Status Summary Cards -->
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
-    <div class="card summary-card draft h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="text-uppercase text-muted small fw-semibold">Draft</div>
-          <i class="fas fa-file text-muted"></i>
+    <a href="/forms?form_status=Draft" class="text-decoration-none text-dark">
+      <div class="card summary-card draft h-100 shadow-sm" style="transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-uppercase text-muted small fw-semibold">Draft</div>
+            <i class="fas fa-file text-muted"></i>
+          </div>
+          <div class="fs-2 fw-bold mt-1">{{ summary.draft }}</div>
         </div>
-        <div class="fs-2 fw-bold mt-1">{{ summary.draft }}</div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card summary-card submitted h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="text-uppercase text-primary small fw-semibold">Submitted</div>
-          <i class="fas fa-paper-plane text-primary"></i>
+    <a href="/forms?form_status=Submitted" class="text-decoration-none text-dark">
+      <div class="card summary-card submitted h-100 shadow-sm" style="transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-uppercase text-primary small fw-semibold">Submitted</div>
+            <i class="fas fa-paper-plane text-primary"></i>
+          </div>
+          <div class="fs-2 fw-bold mt-1">{{ summary.submitted }}</div>
         </div>
-        <div class="fs-2 fw-bold mt-1">{{ summary.submitted }}</div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card summary-card approved h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="text-uppercase small fw-semibold" style="color:#16a34a;">Approved</div>
-          <i class="fas fa-circle-check" style="color:#16a34a;"></i>
+    <a href="/forms?form_status=Approved" class="text-decoration-none text-dark">
+      <div class="card summary-card approved h-100 shadow-sm" style="transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-uppercase small fw-semibold" style="color:#1eb054;">Approved</div>
+            <i class="fas fa-circle-check" style="color:#1eb054;"></i>
+          </div>
+          <div class="fs-2 fw-bold mt-1">{{ summary.approved }}</div>
         </div>
-        <div class="fs-2 fw-bold mt-1">{{ summary.approved }}</div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-6 col-md-3">
-    <div class="card summary-card rejected h-100">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center">
-          <div class="text-uppercase small fw-semibold" style="color:#dc3545;">Rejected</div>
-          <i class="fas fa-circle-xmark" style="color:#dc3545;"></i>
+    <a href="/forms?form_status=Rejected" class="text-decoration-none text-dark">
+      <div class="card summary-card rejected h-100 shadow-sm" style="transition: transform 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-uppercase small fw-semibold" style="color:#dc3545;">Rejected</div>
+            <i class="fas fa-circle-xmark" style="color:#dc3545;"></i>
+          </div>
+          <div class="fs-2 fw-bold mt-1">{{ summary.rejected }}</div>
         </div>
-        <div class="fs-2 fw-bold mt-1">{{ summary.rejected }}</div>
       </div>
-    </div>
+    </a>
   </div>
 </div>
 
@@ -64,9 +72,12 @@
   <div class="card-body">
     <form method="GET" action="/forms" class="row g-2 align-items-center">
       <div class="col-md position-relative">
-        <i class="fas fa-search position-absolute text-muted" style="top: 50%; left: 14px; transform: translateY(-50%); font-size: 0.8rem;"></i>
-        <input name="doctor_name" class="form-control form-control-sm search-pill ps-4"
-               value="{{ filters.doctor_name or '' }}" placeholder="Search profiles...">
+        <div class="position-relative">
+          <i class="fas fa-search position-absolute text-muted" style="top: 50%; left: 14px; transform: translateY(-50%); font-size: 0.8rem;"></i>
+          <input name="doctor_name" id="filter-doctor" class="form-control form-control-sm search-pill ps-4"
+                 value="{{ filters.doctor_name or '' }}" placeholder="Search profiles..." autocomplete="off">
+        </div>
+        <ul id="doctor-autocomplete" class="dropdown-menu w-100 shadow-sm" style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
       </div>
       <div class="col-md-auto">
         <div class="searchable-dropdown position-relative" data-field="mr_name">
@@ -123,10 +134,28 @@
           <i class="fas fa-user text-muted"></i>
         </div>
         <div>
-          <a href="/submission/{{ item.submission_id }}" class="fw-bold text-primary text-decoration-none">
-            {{ item.doctor_name or '—' }}
+          <a href="/submission/{{ item.submission_id }}" class="fw-bold text-primary text-decoration-none fs-6 mb-1 d-block">
+            {% if item.doctor_name and not item.doctor_name.lower().startswith('dr') %}Dr. {% endif %}{{ item.doctor_name or '—' }}
           </a>
-          <div class="text-muted small">{{ item.specialty or '—' }}{% if item.tier %} • {{ item.tier }}{% endif %}</div>
+          <div class="d-flex align-items-center flex-wrap gap-1 mt-1">
+            {% if item.specialty and item.specialty != '—' %}
+              <span class="badge bg-light text-secondary border rounded-pill px-2" style="font-weight: 500;">{{ item.specialty }}</span>
+            {% endif %}
+            {% if item.tier and item.tier.strip() %}
+              {% set t_lower = item.tier.lower() %}
+              {% if 'category a' in t_lower or 'cat a' in t_lower or t_lower.strip() == 'a' or t_lower.endswith(' a') %}
+                <span class="badge rounded-pill px-2" style="background-color: #ffedd5; color: #c2410c; font-weight: 600;">Cat A</span>
+              {% elif 'category b' in t_lower or 'cat b' in t_lower or t_lower.strip() == 'b' or t_lower.endswith(' b') %}
+                <span class="badge rounded-pill px-2" style="background-color: #f1f5f9; color: #475569; font-weight: 600;">Cat B</span>
+              {% elif 'category c' in t_lower or 'cat c' in t_lower or t_lower.strip() == 'c' or t_lower.endswith(' c') %}
+                <span class="badge rounded-pill px-2" style="background-color: #e0e7ff; color: #4338ca; font-weight: 600;">Cat C</span>
+              {% elif 'category d' in t_lower or 'cat d' in t_lower or t_lower.strip() == 'd' or t_lower.endswith(' d') %}
+                <span class="badge rounded-pill px-2" style="background-color: #dcfce7; color: #15803d; font-weight: 600;">Cat D</span>
+              {% else %}
+                <span class="badge rounded-pill px-2" style="background-color: #f3f4f6; color: #4b5563; font-weight: 600;">{{ item.tier }}</span>
+              {% endif %}
+            {% endif %}
+          </div>
         </div>
       </div>
       <div class="col-md-2">
@@ -145,10 +174,18 @@
         <div class="text-uppercase text-muted" style="font-size:.7rem;">Created</div>
         <div class="small">{{ item.created_at.strftime('%d %b %Y') if item.created_at else '—' }}</div>
       </div>
-      <div class="col-md-1 text-end d-flex align-items-center justify-content-end gap-2">
-        <span class="badge rounded-pill bg-{{ badge.get(item.form_status, 'secondary') }}-subtle text-{{ badge.get(item.form_status, 'secondary') }}">
-          {{ item.form_status or '—' }}
+      <div class="col-md-auto ms-auto text-end d-flex align-items-center justify-content-end pe-3">
+        {% if item.form_status == 'Approved' %}
+        <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2" style="background-color: rgba(30, 176, 84, 0.12); color: #1eb054; border: 1px solid rgba(30, 176, 84, 0.25);">
+          <i class="fas fa-circle" style="font-size: 0.45rem;"></i>
+          <span style="font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em;">{{ item.form_status }}</span>
         </span>
+        {% else %}
+        <span class="badge rounded-pill bg-{{ badge.get(item.form_status, 'secondary') }}-subtle text-{{ badge.get(item.form_status, 'secondary') }} d-inline-flex align-items-center gap-2 px-3 py-2 border border-{{ badge.get(item.form_status, 'secondary') }}-subtle">
+          <i class="fas fa-circle" style="font-size: 0.45rem;"></i>
+          <span style="font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em;">{{ item.form_status or '—' }}</span>
+        </span>
+        {% endif %}
       </div>
       <div class="col-md-auto text-end">
         <a href="/submission/{{ item.submission_id }}" class="btn btn-outline-primary btn-sm">View</a>
@@ -231,8 +268,64 @@
       });
     }
 
+    function setupDoctorAutocomplete(inputId, dropdownId, dataList) {
+      const input = document.getElementById(inputId);
+      const dropdown = document.getElementById(dropdownId);
+      if (!input || !dropdown) return;
+      const form = input.closest("form");
+
+      const renderDropdown = (query) => {
+        dropdown.innerHTML = "";
+        if (!query || query.trim().length === 0) {
+          dropdown.classList.remove("show");
+          return;
+        }
+
+        const lowerQuery = query.toLowerCase();
+        const filtered = (dataList || [])
+          .filter((item) => item.toLowerCase().includes(lowerQuery))
+          .slice(0, 50);
+
+        if (filtered.length === 0) {
+          dropdown.classList.remove("show");
+          return;
+        }
+
+        filtered.forEach((item) => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.className = "dropdown-item text-truncate";
+          a.href = "#";
+          a.title = item;
+          a.textContent = item;
+          a.onmousedown = (e) => {
+            e.preventDefault();
+            input.value = item;
+            dropdown.classList.remove("show");
+            if (form) form.submit();
+          };
+          li.appendChild(a);
+          dropdown.appendChild(li);
+        });
+        dropdown.classList.add("show");
+      };
+
+      input.addEventListener("input", (e) => {
+        renderDropdown(e.target.value);
+      });
+
+      input.addEventListener("focus", (e) => {
+        if (e.target.value) renderDropdown(e.target.value);
+      });
+
+      input.addEventListener("blur", () => {
+        setTimeout(() => dropdown.classList.remove("show"), 150);
+      });
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       const options = await loadOptions();
+      setupDoctorAutocomplete("filter-doctor", "doctor-autocomplete", options.doctors || []);
       document.querySelectorAll(".searchable-dropdown").forEach((wrapper) => {
         const field = wrapper.getAttribute("data-field");
         const values = options[FIELD_TO_KEY[field]] || [];
@@ -290,22 +383,42 @@
 </style>
 
 <!-- Pagination -->
-{% if listing.total > listing.page_size %}
-<nav class="mt-3">
-  <ul class="pagination pagination-sm justify-content-end">
-    {% set total_pages = (listing.total // listing.page_size) + (1 if listing.total % listing.page_size else 0) %}
-    {% for p in range(1, total_pages + 1) %}
-    <li class="page-item {% if p == listing.page %}active{% endif %}">
-      <a class="page-link" href="?page={{ p }}
-        {%- if filters.mr_name %}&mr_name={{ filters.mr_name }}{% endif %}
-        {%- if filters.mr_manager_name %}&mr_manager_name={{ filters.mr_manager_name }}{% endif %}
-        {%- if filters.geography %}&geography={{ filters.geography }}{% endif %}
-        {%- if filters.doctor_name %}&doctor_name={{ filters.doctor_name }}{% endif %}
-        {%- if filters.form_status %}&form_status={{ filters.form_status }}{% endif %}">
-        {{ p }}
-      </a>
+{% set total_pages = (listing.total // listing.page_size) + (1 if listing.total % listing.page_size else 0) %}
+{% if total_pages > 1 %}
+{% set current_page = listing.page %}
+{% set start_p = 1 if (current_page - 2) < 1 else (current_page - 2) %}
+{% set end_p = total_pages if (start_p + 4) > total_pages else (start_p + 4) %}
+{% set start_p = 1 if (end_p - 4) < 1 else (end_p - 4) %}
+{% set query_params = ('&mr_name=' ~ filters.mr_name if filters.mr_name else '') ~
+                      ('&mr_manager_name=' ~ filters.mr_manager_name if filters.mr_manager_name else '') ~
+                      ('&geography=' ~ filters.geography if filters.geography else '') ~
+                      ('&doctor_name=' ~ filters.doctor_name if filters.doctor_name else '') ~
+                      ('&form_status=' ~ filters.form_status if filters.form_status else '') %}
+
+<nav class="mt-4 d-flex justify-content-end">
+  <ul class="pagination pagination-sm mb-0 shadow-sm">
+    <!-- First & Prev -->
+    <li class="page-item {% if current_page <= 1 %}disabled{% endif %}">
+      <a class="page-link" href="?page=1{{ query_params }}" aria-label="First">&laquo;</a>
+    </li>
+    <li class="page-item {% if current_page <= 1 %}disabled{% endif %}">
+      <a class="page-link" href="?page={{ current_page - 1 if current_page > 1 else 1 }}{{ query_params }}" aria-label="Previous">&lsaquo;</a>
+    </li>
+
+    <!-- Page Numbers Window -->
+    {% for p in range(start_p, end_p + 1) %}
+    <li class="page-item {% if p == current_page %}active{% endif %}">
+      <a class="page-link" href="?page={{ p }}{{ query_params }}">{{ p }}</a>
     </li>
     {% endfor %}
+
+    <!-- Next & Last -->
+    <li class="page-item {% if current_page >= total_pages %}disabled{% endif %}">
+      <a class="page-link" href="?page={{ current_page + 1 if current_page < total_pages else total_pages }}{{ query_params }}" aria-label="Next">&rsaquo;</a>
+    </li>
+    <li class="page-item {% if current_page >= total_pages %}disabled{% endif %}">
+      <a class="page-link" href="?page={{ total_pages }}{{ query_params }}" aria-label="Last">&raquo;</a>
+    </li>
   </ul>
 </nav>
 {% endif %}
