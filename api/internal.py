@@ -35,6 +35,7 @@ async def get_doctor_mr_mappings(
     mr_name: str | None = None,
     manager_name: str | None = None,
     geolocation: str | None = None,
+    category: str | None = None,
     page: int = 1,
     page_size: int = 15,
     db: AsyncSession = Depends(get_db),
@@ -46,6 +47,7 @@ async def get_doctor_mr_mappings(
         mr_name=mr_name,
         manager_name=manager_name,
         geolocation=geolocation,
+        category=category,
         page=page,
         page_size=page_size,
     )
@@ -102,6 +104,7 @@ async def get_all_doctor_ids_endpoint(
     mr_name: str | None = None,
     manager_name: str | None = None,
     geolocation: str | None = None,
+    category: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_admin),
     tenant_id: str = Depends(resolve_tenant_id),
@@ -111,6 +114,7 @@ async def get_all_doctor_ids_endpoint(
         mr_name=mr_name,
         manager_name=manager_name,
         geolocation=geolocation,
+        category=category,
     )
     ids = await get_all_doctor_ids(db, tenant_id, filters)
     return {"doctor_ids": ids, "total": len(ids)}

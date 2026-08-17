@@ -8,6 +8,7 @@ class MappingFilterParams(BaseModel):
     mr_name: Optional[str] = None          # exact MR name (dropdown selection)
     manager_name: Optional[str] = None     # exact manager name (dropdown selection)
     geolocation: Optional[str] = None      # exact geography (dropdown selection)
+    category: Optional[str] = None
     page: int = 1
     page_size: int = 15
 
@@ -22,6 +23,7 @@ class DoctorMRMappingRead(BaseModel):
     mr_user_id: Optional[str] = None
     mr_name: Optional[str] = None           # None → display "Unassigned" in UI
     manager_name: Optional[str] = None      # None → display "—" in UI
+    category: Optional[str] = None          # Behavioral Category
 
     model_config = {"from_attributes": True}
 

@@ -3,7 +3,6 @@ endblock %} {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h3 class="fw-bold mb-1">Doctor–MR Mapping</h3>
-    <div class="text-muted">Manage and align territorial assignments.</div>
   </div>
   <div>
     <button
@@ -88,6 +87,14 @@ endblock %} {% block content %}
               style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
         </div>
       </div>
+      <div class="col-md-auto">
+        <div class="searchable-dropdown position-relative">
+          <input type="text" id="filter-category" class="form-control form-control-sm filter-pill searchable-input"
+                 placeholder="Category" autocomplete="off" />
+          <ul id="filter-category-menu" class="dropdown-menu w-100 shadow-sm searchable-menu"
+              style="max-height: 250px; overflow-y: auto; font-size: 0.875rem;"></ul>
+        </div>
+      </div>
       <div class="col-auto d-flex gap-2 align-items-center ms-auto">
         <button
           type="button"
@@ -108,33 +115,30 @@ endblock %} {% block content %}
   </div>
 </div>
 
-<!-- Data Table -->
-<div class="card position-relative">
+<!-- Data List -->
+<div class="position-relative">
   <div
     id="table-loader"
     class="position-absolute top-0 start-0 w-100 h-100 bg-white opacity-75 d-flex justify-content-center align-items-center"
-    style="z-index: 10; display: none !important"
+    style="z-index: 10; display: none !important; min-height: 200px;"
   >
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
   </div>
-  <div class="card-body p-0">
-    <table class="table table-hover table-sm mb-0">
-      <thead class="table-light">
-        <tr>
-          <th style="width: 50px;" class="ps-4"><input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" /></th>
-          <th>Doctor</th>
-          <th>MR name</th>
-          <th>Manager</th>
-          <th>Geography</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="mapping-table-body">
-        <!-- Rendered via JS -->
-      </tbody>
-    </table>
+
+  <!-- Select All Header -->
+  <div id="select-all-container" class="justify-content-between align-items-center mb-3 px-2" style="display: none;">
+    <div class="form-check m-0">
+      <input class="form-check-input shadow-sm" type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)" style="cursor:pointer; width:1.1rem; height:1.1rem;">
+      <label class="form-check-label text-muted small fw-semibold ms-1" for="select-all-checkbox" style="cursor:pointer; padding-top:2px;">
+        Select All
+      </label>
+    </div>
+  </div>
+
+  <div id="mapping-table-body" class="d-flex flex-column gap-3">
+    <!-- Rendered via JS -->
   </div>
 </div>
 
@@ -361,6 +365,7 @@ endblock %} {% block content %}
       document.getElementById("filter-manager").value;
     activeFilters.geolocation =
       document.getElementById("filter-geolocation").value;
+    activeFilters.category = document.getElementById("filter-category").value;
     currentPage = 1;
     fetchMappings();
   }
@@ -370,11 +375,13 @@ endblock %} {% block content %}
     document.getElementById("filter-mr").value = "";
     document.getElementById("filter-manager").value = "";
     document.getElementById("filter-geolocation").value = "";
+    document.getElementById("filter-category").value = "";
     activeFilters = {
       doctor_name: "",
       mr_name: "",
       manager_name: "",
       geolocation: "",
+      category: "",
     };
     currentPage = 1;
     fetchMappings();
@@ -417,44 +424,105 @@ endblock %} {% block content %}
     showTableLoader(false);
   }
 
-  // Render Table
+  // Render List
   function renderTable(data) {
-    const tbody = document.getElementById("mapping-table-body");
-    tbody.innerHTML = "";
+    const container = document.getElementById("mapping-table-body");
+    container.innerHTML = "";
 
     if (data.items.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No records found</td></tr>`;
+      container.innerHTML = `<div class="text-center text-muted py-5 bg-white rounded border border-dashed">No records found</div>`;
       return;
     }
 
     data.items.forEach((item) => {
-      const tr = document.createElement("tr");
-      tr.style.cursor = "pointer";
-      tr.onclick = (e) => {
+      const card = document.createElement("div");
+      const isChecked = selectedDoctorIds.has(item.doctor_id);
+      
+      card.className = "card shadow-sm mapping-card";
+      card.style.borderRadius = "12px";
+      card.style.cursor = "pointer";
+      card.style.transition = "all 0.2s";
+      card.style.border = isChecked ? "1.5px solid #2563eb" : "1px solid #e6e8ef";
+      
+      card.onclick = (e) => {
         if (!e.target.closest("button") && !e.target.closest("input[type=checkbox]")) {
-          openDrawer(item);
+          const checkbox = card.querySelector('.doctor-checkbox');
+          if (checkbox) checkbox.click();
         }
       };
 
+      let displayName = item.doctor_name;
+      if (!displayName.toLowerCase().startsWith("dr.") && !displayName.toLowerCase().startsWith("dr ")) {
+          displayName = "Dr. " + displayName;
+      }
+
       const doctorSpec = item.doctor_speciality
-        ? `<br><span class="badge rounded-pill bg-light text-dark border mt-1">${item.doctor_speciality}</span>`
+        ? `<span class="badge bg-light text-secondary border me-1 rounded-pill px-2" style="font-weight: 500;">${item.doctor_speciality}</span>`
         : "";
-      const mrBadge = item.mr_name
-        ? item.mr_name
-        : `<span class="badge bg-warning text-dark">Unassigned</span>`;
+
+      let catBadge = "";
+      if (item.category) {
+        let bg = "#f3f4f6"; let text = "#4b5563"; // default Gray
+        const cat = item.category.toLowerCase();
+        if (cat.includes("a") && !cat.includes("category") && !cat.includes("cat ") || cat.endsWith("a")) { bg = "#ffedd5"; text = "#c2410c"; } // Orange
+        else if (cat.endsWith("b")) { bg = "#f1f5f9"; text = "#475569"; } // Slate
+        else if (cat.endsWith("c")) { bg = "#e0e7ff"; text = "#4338ca"; } // Indigo
+        else if (cat.endsWith("d")) { bg = "#dcfce7"; text = "#15803d"; } // Green
+        
+        let displayCat = item.category.trim();
+        if (displayCat.length === 1) {
+            displayCat = "Cat " + displayCat;
+        } else if (!displayCat.toLowerCase().startsWith("cat") && !displayCat.toLowerCase().startsWith("category")) {
+            displayCat = "Cat " + displayCat;
+        }
+
+        catBadge = `<span class="badge rounded-pill px-2" style="background-color: ${bg}; color: ${text}; font-weight: 600;">${displayCat}</span>`;
+      }
+
+      const mrText = item.mr_name
+        ? `<div class="text-dark" style="font-size: 0.95rem;">${item.mr_name}</div>`
+        : `<div class="text-warning" style="font-size: 0.95rem;">Unassigned</div>`;
       const managerText = item.manager_name || "—";
       const locText = item.geolocation || "—";
-      const isChecked = selectedDoctorIds.has(item.doctor_id) ? "checked" : "";
+      const checkedAttr = isChecked ? "checked" : "";
 
-      tr.innerHTML = `
-            <td class="ps-4"><input type="checkbox" class="doctor-checkbox" data-doctor-id="${item.doctor_id}" ${isChecked} onclick="event.stopPropagation(); toggleDoctorSelection('${item.doctor_id}', this)" /></td>
-            <td>${item.doctor_name}${doctorSpec}</td>
-            <td>${mrBadge}</td>
-            <td>${managerText}</td>
-            <td>${locText}</td>
-            <td><button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); openDrawer(${JSON.stringify(item).replace(/"/g, "&quot;")})">ReMap</button></td>
-        `;
-      tbody.appendChild(tr);
+      card.innerHTML = `
+        <div class="card-body p-3 d-flex align-items-center">
+            <div class="pe-3 ps-2">
+                <input type="checkbox" class="form-check-input shadow-sm doctor-checkbox" style="width:1.2rem; height:1.2rem; cursor:pointer;" data-doctor-id="${item.doctor_id}" ${checkedAttr} onclick="event.stopPropagation(); toggleDoctorSelection('${item.doctor_id}', this, this.closest('.mapping-card'))" />
+            </div>
+            
+            <div class="flex-grow-1 row align-items-center g-3">
+                <div class="col-md-4">
+                    <h6 class="mb-1 fw-bold text-dark" style="font-size:1.1rem;">${displayName}</h6>
+                    <div class="d-flex align-items-center flex-wrap gap-1 mt-1">
+                        ${doctorSpec}
+                        ${catBadge}
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">MR</div>
+                    ${mrText}
+                </div>
+
+                <div class="col-md-2">
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">Manager</div>
+                    <div class="text-dark" style="font-size: 0.95rem;">${managerText}</div>
+                </div>
+
+                <div class="col-md-2">
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; letter-spacing: 0.05em; font-weight: 600; margin-bottom: 2px;">Location</div>
+                    <div class="text-dark" style="font-size: 0.95rem;" title="${locText}">${locText}</div>
+                </div>
+
+                <div class="col-md-1 text-md-end text-start mt-3 mt-md-0">
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="event.stopPropagation(); openDrawer(${JSON.stringify(item).replace(/"/g, "&quot;")})">ReMap</button>
+                </div>
+            </div>
+        </div>
+      `;
+      container.appendChild(card);
     });
 
     updateBulkButton();
@@ -575,7 +643,7 @@ endblock %} {% block content %}
     });
   }
 
-  let filterData = { doctors: [], mrs: [], managers: [], locations: [] };
+  let filterData = { doctors: [], mrs: [], managers: [], locations: [], categories: [] };
 
   // Setup a searchable dropdown filter (type-to-search, shows full list on click)
   function setupSearchableFilter(inputId, menuId, values) {
@@ -633,10 +701,25 @@ endblock %} {% block content %}
       // Doctor stays a free-text search box with autocomplete suggestions
       setupAutocomplete("filter-doctor", "doctor-autocomplete", filterData.doctors);
 
-      // MR / Manager / Geography are searchable dropdowns
+      // MR / Manager / Geography / Category are searchable dropdowns
       setupSearchableFilter("filter-mr", "filter-mr-menu", filterData.mrs);
       setupSearchableFilter("filter-manager", "filter-manager-menu", filterData.managers);
       setupSearchableFilter("filter-geolocation", "filter-geolocation-menu", filterData.geographies);
+      
+      let categoryOptions = filterData.categories || [];
+      // Format category strings correctly for the dropdown (e.g. "Cat A")
+      categoryOptions = categoryOptions.map(cat => {
+          let displayCat = cat.trim();
+          if (displayCat.length === 1) {
+              return "Cat " + displayCat;
+          } else if (!displayCat.toLowerCase().startsWith("cat") && !displayCat.toLowerCase().startsWith("category")) {
+              return "Cat " + displayCat;
+          }
+          return displayCat;
+      });
+      // Remove any duplicates that might have been created by mapping
+      categoryOptions = [...new Set(categoryOptions)].sort();
+      setupSearchableFilter("filter-category", "filter-category-menu", categoryOptions);
     } catch (e) {
       console.error("Failed to load filter options", e);
     }
@@ -810,11 +893,17 @@ endblock %} {% block content %}
 
   // --- Bulk ReMap Logic ---
 
-  function toggleDoctorSelection(doctorId, checkbox) {
+  function toggleDoctorSelection(doctorId, checkbox, cardEl) {
     if (checkbox.checked) {
       selectedDoctorIds.add(doctorId);
+      if(cardEl) {
+          cardEl.style.border = "1.5px solid #2563eb";
+      }
     } else {
       selectedDoctorIds.delete(doctorId);
+      if(cardEl) {
+          cardEl.style.border = "1px solid #e6e8ef";
+      }
     }
     updateBulkButton();
     updateSelectAllCheckbox();
@@ -837,12 +926,20 @@ endblock %} {% block content %}
       }
       // Also check all visible checkboxes on the current page
       const checkboxes = document.querySelectorAll(".doctor-checkbox");
-      checkboxes.forEach(cb => { cb.checked = true; });
+      checkboxes.forEach(cb => { 
+        cb.checked = true; 
+        const card = cb.closest('.mapping-card');
+        if (card) card.style.border = "1.5px solid #2563eb";
+      });
     } else {
       // Uncheck all — clear the entire Set
       selectedDoctorIds.clear();
       const checkboxes = document.querySelectorAll(".doctor-checkbox");
-      checkboxes.forEach(cb => { cb.checked = false; });
+      checkboxes.forEach(cb => { 
+        cb.checked = false; 
+        const card = cb.closest('.mapping-card');
+        if (card) card.style.border = "1px solid #e6e8ef";
+      });
     }
     updateBulkButton();
   }
@@ -852,6 +949,15 @@ endblock %} {% block content %}
     const countSpan = document.getElementById("bulk-count");
     countSpan.textContent = selectedDoctorIds.size;
     btn.disabled = selectedDoctorIds.size === 0;
+    
+    const selectAllContainer = document.getElementById("select-all-container");
+    if (selectAllContainer) {
+        if (selectedDoctorIds.size > 0) {
+            selectAllContainer.style.setProperty("display", "flex", "important");
+        } else {
+            selectAllContainer.style.setProperty("display", "none", "important");
+        }
+    }
   }
 
   function updateSelectAllCheckbox() {
@@ -1023,6 +1129,8 @@ endblock %} {% block content %}
       activeFilters.manager_name = urlParams.get("manager_name");
     if (urlParams.has("geolocation"))
       activeFilters.geolocation = urlParams.get("geolocation");
+    if (urlParams.has("category"))
+      activeFilters.category = urlParams.get("category");
     if (urlParams.has("page"))
       currentPage = parseInt(urlParams.get("page")) || 1;
 
@@ -1034,6 +1142,8 @@ endblock %} {% block content %}
       activeFilters.manager_name;
     document.getElementById("filter-geolocation").value =
       activeFilters.geolocation;
+    document.getElementById("filter-category").value =
+      activeFilters.category;
 
     fetchMappings();
     loadMROptions();
