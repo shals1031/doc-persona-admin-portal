@@ -10,7 +10,7 @@ from core.database import Base
 
 class Form(Base):
     __tablename__ = "forms"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "core"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), nullable=False)
@@ -30,12 +30,12 @@ class FormVersion(Base):
     __tablename__ = "form_versions"
     __table_args__ = (
         UniqueConstraint("tenant_id", "form_id", "version_number", name="uq_form_versions_tenant_form_version"),
-        {"schema": "public"},
+        {"schema": "core"},
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), nullable=False)
-    form_id = Column(UUID(as_uuid=True), ForeignKey("public.forms.id", ondelete="CASCADE"), nullable=False)
+    form_id = Column(UUID(as_uuid=True), ForeignKey("core.forms.id", ondelete="CASCADE"), nullable=False)
     version_number = Column(Integer, nullable=False)
     version_string = Column(String(50), nullable=False)
     schema_json = Column(JSONB, nullable=False)
