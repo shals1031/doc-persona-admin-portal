@@ -1,10 +1,12 @@
 import uuid
 from typing import Any
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.dashboard import DashboardFact
+from models.submission import Submission
+from models.auth import Doctor
 from core.config import settings
 from schemas.dashboard import DashboardFilters
 
@@ -29,7 +31,24 @@ class DashboardRepository:
         query = select(DashboardFact).where(DashboardFact.tenant_id == tenant_id)
 
         if filters.geography:
-            query = query.where(DashboardFact.geography.ilike(f"%{filters.geography}%"))
+            geo = filters.geography.strip()
+            geo_alt = geo.replace(" and ", " & ") if " and " in geo.lower() else geo.replace(" & ", " and ")
+            geo_conditions = [
+                DashboardFact.geography.ilike(f"%{geo}%"),
+                Doctor.state.ilike(f"%{geo}%"),
+                Doctor.area.ilike(f"%{geo}%"),
+            ]
+            if geo_alt.lower() != geo.lower():
+                geo_conditions.extend([
+                    DashboardFact.geography.ilike(f"%{geo_alt}%"),
+                    Doctor.state.ilike(f"%{geo_alt}%"),
+                    Doctor.area.ilike(f"%{geo_alt}%"),
+                ])
+            query = (
+                query.outerjoin(Submission, DashboardFact.submission_id == Submission.id)
+                     .outerjoin(Doctor, Submission.doctor_id == Doctor.id)
+                     .where(or_(*geo_conditions))
+            )
         if filters.mr_name:
             query = query.where(DashboardFact.mr_name.ilike(f"%{filters.mr_name}%"))
         if filters.mr_manager_name:
@@ -62,7 +81,24 @@ class DashboardRepository:
         query = select(DashboardFact).where(DashboardFact.tenant_id == tenant_id)
 
         if filters.geography:
-            query = query.where(DashboardFact.geography.ilike(f"%{filters.geography}%"))
+            geo = filters.geography.strip()
+            geo_alt = geo.replace(" and ", " & ") if " and " in geo.lower() else geo.replace(" & ", " and ")
+            geo_conditions = [
+                DashboardFact.geography.ilike(f"%{geo}%"),
+                Doctor.state.ilike(f"%{geo}%"),
+                Doctor.area.ilike(f"%{geo}%"),
+            ]
+            if geo_alt.lower() != geo.lower():
+                geo_conditions.extend([
+                    DashboardFact.geography.ilike(f"%{geo_alt}%"),
+                    Doctor.state.ilike(f"%{geo_alt}%"),
+                    Doctor.area.ilike(f"%{geo_alt}%"),
+                ])
+            query = (
+                query.outerjoin(Submission, DashboardFact.submission_id == Submission.id)
+                     .outerjoin(Doctor, Submission.doctor_id == Doctor.id)
+                     .where(or_(*geo_conditions))
+            )
         if filters.mr_name:
             query = query.where(DashboardFact.mr_name.ilike(f"%{filters.mr_name}%"))
         if filters.mr_manager_name:
